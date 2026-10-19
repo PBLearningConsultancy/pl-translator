@@ -144,7 +144,55 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
-      margin-bottom: 18px;
+      margin-bottom: 14px;
+    }
+    .voice-prefs { margin-bottom: 8px; }
+    .voice-pref {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .voice-pref-label {
+      flex: 0 0 6.8rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+    .voice-pref-options { flex: 1; display: flex; gap: 4px; }
+    .voice-pref-options button {
+      flex: 1;
+      border: 1px solid var(--border-colour);
+      background: var(--card-bg);
+      border-radius: 8px;
+      padding: 6px 2px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .voice-pref[data-side="en"] .voice-pref-options button.active {
+      border-color: var(--en-colour);
+      color: var(--en-colour);
+      background: #eff6ff;
+    }
+    .voice-pref[data-side="pl"] .voice-pref-options button.active {
+      border-color: var(--pl-colour);
+      color: var(--pl-colour);
+      background: #fef2f2;
+    }
+    .voice-note {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      line-height: 1.35;
+      margin: 0 0 14px;
+    }
+    .voice-hint {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      min-height: 1.15em;
+      margin: 8px 0 0;
     }
     .mic-btn {
       border: none;
@@ -225,6 +273,7 @@
     .input-row { display: flex; gap: 8px; }
     .input-row input {
       flex: 1;
+      min-width: 0;
       padding: 12px;
       border-radius: 10px;
       border: 1px solid var(--border-colour);
@@ -268,6 +317,26 @@
       </button>
     </div>
 
+    <div class="voice-prefs">
+      <div class="voice-pref" data-side="en">
+        <span class="voice-pref-label">English speaker</span>
+        <div class="voice-pref-options" role="group" aria-label="English speaker voice">
+          <button type="button" data-side="en" data-voice="auto" aria-pressed="true">Auto</button>
+          <button type="button" data-side="en" data-voice="male" aria-pressed="false">Male</button>
+          <button type="button" data-side="en" data-voice="female" aria-pressed="false">Female</button>
+        </div>
+      </div>
+      <div class="voice-pref" data-side="pl">
+        <span class="voice-pref-label">Polish speaker</span>
+        <div class="voice-pref-options" role="group" aria-label="Polish speaker voice">
+          <button type="button" data-side="pl" data-voice="auto" aria-pressed="true">Auto</button>
+          <button type="button" data-side="pl" data-voice="male" aria-pressed="false">Male</button>
+          <button type="button" data-side="pl" data-voice="female" aria-pressed="false">Female</button>
+        </div>
+      </div>
+    </div>
+    <p class="voice-note">Auto guesses male or female from the voice. Choose Male or Female if that guess is wrong.</p>
+
     <section class="panel">
       <div class="panel-header">
         <span id="sourceLabel" class="panel-label">Heard</span>
@@ -281,6 +350,7 @@
         <button id="btnReplay" class="replay-btn" type="button" onclick="replaySpeech()">🔊 Replay</button>
       </div>
       <div id="targetText" class="panel-text">...</div>
+      <p id="voiceHint" class="voice-hint" aria-live="polite"></p>
     </section>
 
     <section class="manual-input">
@@ -316,6 +386,7 @@
     const targetLabel = document.getElementById('targetLabel');
     const targetTextEl = document.getElementById('targetText');
     const textInput = document.getElementById('textInput');
+    const voiceHint = document.getElementById('voiceHint');
 
     // ---------- State ----------
     let mode = 'manual';          // 'manual' | 'auto'
@@ -324,13 +395,34 @@
     let typedLang = 'en';         // language of typed text
     let lastTranslation = '';
     let lastTargetLocale = 'pl-PL';
+    let lastVoiceGender = null;   // gender used for the last spoken translation
     let turnHandled = false;      // guards against translating one turn twice
     let lastInterim = '';
     let lastError = '';
     let session = 0;              // bumps on stop/new turn to cancel stale callbacks
+    let activeEpoch = 0;          // bumps whenever listening is stopped or restarted
+    let sessionEpoch = 0;         // epoch of the recognition that is allowed to report errors
     let pendingTimer = null;
     let voices = [];
     let speechUnlocked = false;
+    let voicePrefs = { en: 'auto', pl: 'auto' };
+    let sharedTrackBroken = false;
+    try { sharedTrackBroken = sessionStorage.getItem('plTranslatorPitchOff') === '1'; } catch (e) { /* ignore */ }
+
+    // Pitch capture shares one microphone track with recognition. A second
+    // getUserMedia call beside SpeechRecognition steals the mic on Android
+    // (and on this desktop Chrome too), so Auto never opens the mic twice.
+    let captureMode = 'off';      // 'off' | 'shared'
+    let recoverPlainRecognition = false;
+    let pitchAttempted = false;
+    let pitchBlockedReason = null; // null | 'device' | 'failed'
+    let detectedThisTurn = null;
+    let pitchSamples = [];
+    let pitchStream = null;
+    let pitchSourceNode = null;
+    let pitchAnalyser = null;
+    let pitchTimer = null;
+    let audioContext = null;
 
     const RELISTEN_DELAY_MS = 600;   // after no-speech in the loop
     const ECHO_GUARD_MS = 400;       // after TTS before re-listening
@@ -398,13 +490,33 @@
           turnHandled = true;
           sourceTextEl.classList.remove('interim');
           sourceTextEl.textContent = text;
+          finishPitchDetection();
           try { recognition.stop(); } catch (e) { /* already stopped */ }
           processTranslation(text, currentLang, { fromSpeech: true });
         }
       };
 
       recognition.onerror = (event) => {
+        if (activeEpoch !== sessionEpoch) return;
         lastError = event.error || 'unknown';
+        // Sharing the track failed: drop it and listen again the normal way.
+        if (captureMode === 'shared' && recoverPlainRecognition && !turnHandled &&
+            (lastError === 'audio-capture' || lastError === 'aborted')) {
+          noteSharedTrackFailed();
+          const mySession = session;
+          schedule(() => {
+            if (mySession !== session || turnHandled) return;
+            try { recognition.start(); }
+            catch (e) {
+              try { recognition.abort(); } catch (e2) { /* ignore */ }
+              schedule(() => {
+                if (mySession !== session || turnHandled) return;
+                try { recognition.start(); } catch (e3) { updateUIState('ready'); }
+              }, 250);
+            }
+          }, 200);
+          return;
+        }
         if (FATAL_ERRORS.includes(lastError)) {
           const msg = lastError === 'not-allowed' || lastError === 'service-not-allowed'
             ? 'Microphone blocked. Allow microphone access and try again.'
@@ -428,7 +540,24 @@
           const text = lastInterim;
           sourceTextEl.classList.remove('interim');
           sourceTextEl.textContent = text;
+          finishPitchDetection();
           processTranslation(text, currentLang, { fromSpeech: true });
+          return;
+        }
+
+        // Pitch heard a voice but recognition got none: the shared track was not
+        // delivered. Turn detection off for this visit and do not keep failing.
+        if (captureMode === 'shared' && pitchSamples.length >= 5 && !lastInterim &&
+            lastError !== 'aborted' && lastError !== 'network' && !FATAL_ERRORS.includes(lastError)) {
+          noteSharedTrackFailed();
+          showVoiceHint('Voice detection interrupted the microphone, so it is off for this visit.');
+          if (mode === 'auto' && loopActive) {
+            sourceTextEl.textContent = 'Listening again without voice detection...';
+            schedule(() => { if (mySession === session && loopActive) startListening(); }, RELISTEN_DELAY_MS);
+            return;
+          }
+          sourceTextEl.textContent = 'Speech recognition missed that. Tap the button again.';
+          updateUIState('ready');
           return;
         }
 
@@ -447,6 +576,9 @@
           sourceTextEl.textContent = 'Speech recognition needs an internet connection.';
         } else if (sourceTextEl.textContent === 'Listening...') {
           sourceTextEl.textContent = '...';
+        }
+        if ((voicePrefs[currentLang] || 'auto') === 'auto' && pitchBlockedReason === 'device') {
+          showVoiceHint('Could not detect the voice on this device. Choose Male or Female.');
         }
         updateUIState('ready');
       };
@@ -478,8 +610,12 @@
 
     function stopAll() {
       session++;
+      activeEpoch++;
       clearPending();
       turnHandled = true; // makes any late onend/onresult a no-op
+      recoverPlainRecognition = false;
+      captureMode = 'off';
+      stopPitchCapture();
       if (recognition) { try { recognition.abort(); } catch (e) { /* ignore */ } }
       if (ttsSupported) window.speechSynthesis.cancel();
     }
@@ -501,6 +637,7 @@
     function handleMicClick(lang) {
       if (!recognition) return;
       unlockSpeech();
+      unlockAudioGraph();
       stopAll();
       currentLang = lang;
       if (mode === 'auto') {
@@ -512,12 +649,21 @@
       schedule(() => { if (mySession === session) startListening(); }, 150);
     }
 
-    function startListening() {
+    async function startListening() {
       if (!recognition) return;
       session++;
+      activeEpoch++;
+      const epoch = activeEpoch;
+      const mySession = session;
       turnHandled = false;
       lastInterim = '';
       lastError = '';
+      pitchSamples = [];
+      detectedThisTurn = null;
+      pitchAttempted = false;
+      captureMode = 'off';
+      recoverPlainRecognition = false;
+      showVoiceHint('');
       recognition.lang = currentLang === 'en' ? 'en-GB' : 'pl-PL';
 
       sourceLabel.textContent = currentLang === 'en' ? 'Heard (English)' : 'Usłyszano (Polski)';
@@ -527,15 +673,61 @@
       targetTextEl.textContent = '...';
 
       highlightTurn(currentLang);
+      updateUIState('listening');
 
+      const plan = pitchPlan();
+      if (plan === 'shared') {
+        pitchBlockedReason = null;
+        let stream = null;
+        try { stream = await acquireMicStream(); } catch (e) { stream = null; }
+        if (epoch !== activeEpoch || mySession !== session) {
+          if (stream) stream.getTracks().forEach(track => { try { track.stop(); } catch (e) { /* ignore */ } });
+          return;
+        }
+        const track = stream && stream.getAudioTracks()[0];
+        if (track && track.readyState === 'live') {
+          beginPitchMeter(stream);
+          pitchAttempted = !!pitchAnalyser;
+          try {
+            captureMode = 'shared';
+            recoverPlainRecognition = true;
+            sessionEpoch = epoch;
+            recognition.start(track);
+            return;
+          } catch (e) {
+            // A thrown start is a timing problem, not proof that sharing is unsafe.
+            stopPitchCapture();
+            captureMode = 'off';
+            recoverPlainRecognition = false;
+            pitchAttempted = false;
+            pitchBlockedReason = 'failed';
+          }
+        } else {
+          pitchBlockedReason = 'failed';
+          if (stream) stream.getTracks().forEach(t => { try { t.stop(); } catch (e) { /* ignore */ } });
+        }
+      } else if (plan === 'unavailable') {
+        pitchBlockedReason = 'device';
+      } else {
+        pitchBlockedReason = null;
+      }
+
+      if (epoch !== activeEpoch || mySession !== session) return;
+      beginPlainRecognition(mySession, epoch);
+    }
+
+    function beginPlainRecognition(mySession, epoch) {
+      captureMode = 'off';
+      recoverPlainRecognition = false;
+      sessionEpoch = epoch;
       try {
         recognition.start();
       } catch (e) {
         // Already started (InvalidStateError): restart cleanly.
         try { recognition.abort(); } catch (e2) { /* ignore */ }
-        const mySession = session;
         schedule(() => {
           if (mySession !== session) return;
+          sessionEpoch = activeEpoch;
           try { recognition.start(); } catch (e3) { updateUIState('ready'); }
         }, 250);
       }
@@ -580,6 +772,9 @@
         return;
       }
       const mySession = session;
+      const voiceChoice = decideVoice(sourceLang, fromSpeech);
+      lastVoiceGender = voiceChoice.gender;
+      showVoiceHint(voiceChoice.hint);
       setStatus('Translating...');
       const targetLang = sourceLang === 'en' ? 'pl' : 'en';
 
@@ -614,7 +809,7 @@
         } else {
           updateUIState('ready');
         }
-      });
+      }, voiceChoice.gender);
     }
 
     // ---------- Text-to-speech ----------
@@ -632,17 +827,331 @@
       }
     }
 
+    // ---------- Voice gender ----------
+    const VOICE_PREF_KEY = 'plTranslatorVoicePref';
+    const PITCH_OFF_KEY = 'plTranslatorPitchOff';
+    const MALE_BELOW_HZ = 160;
+
+    function loadVoicePrefs() {
+      const fallback = { en: 'auto', pl: 'auto' };
+      try {
+        const raw = localStorage.getItem(VOICE_PREF_KEY);
+        if (!raw) return fallback;
+        const parsed = JSON.parse(raw);
+        const ok = value => value === 'auto' || value === 'male' || value === 'female';
+        return {
+          en: parsed && ok(parsed.en) ? parsed.en : 'auto',
+          pl: parsed && ok(parsed.pl) ? parsed.pl : 'auto'
+        };
+      } catch (e) {
+        return fallback;
+      }
+    }
+
+    function setVoicePref(side, value) {
+      if ((side !== 'en' && side !== 'pl') || (value !== 'auto' && value !== 'male' && value !== 'female')) return;
+      voicePrefs[side] = value;
+      try { localStorage.setItem(VOICE_PREF_KEY, JSON.stringify(voicePrefs)); } catch (e) { /* private mode */ }
+      renderVoicePrefs();
+    }
+
+    function renderVoicePrefs() {
+      document.querySelectorAll('.voice-pref-options button').forEach(btn => {
+        const on = voicePrefs[btn.dataset.side] === btn.dataset.voice;
+        btn.classList.toggle('active', on);
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+    }
+
+    function showVoiceHint(text) {
+      if (voiceHint) voiceHint.textContent = text || '';
+    }
+
+    function decideVoice(sourceLang, fromSpeech) {
+      const pref = voicePrefs[sourceLang] || 'auto';
+      if (pref === 'male' || pref === 'female') {
+        return {
+          gender: pref,
+          hint: pref === 'male' ? 'Using a male voice' : 'Using a female voice'
+        };
+      }
+      if (!fromSpeech) return { gender: null, hint: '' };
+      if (detectedThisTurn && detectedThisTurn.lang === sourceLang && detectedThisTurn.gender) {
+        const gender = detectedThisTurn.gender;
+        return {
+          gender: gender,
+          hint: gender === 'male' ? 'Detected: male voice' : 'Detected: female voice'
+        };
+      }
+      if (pitchBlockedReason === 'device') {
+        return { gender: null, hint: 'Could not detect the voice on this device. Choose Male or Female.' };
+      }
+      return { gender: null, hint: 'Could not detect the voice. Choose Male or Female if it sounds wrong.' };
+    }
+
+    // Chromium 135+ can recognise speech from an existing track, so pitch
+    // measurement and recognition share one microphone open. iOS browsers
+    // cannot, and opening a second capture breaks recognition there.
+    function supportsRecognitionAudioTrack() {
+      const ua = navigator.userAgent || '';
+      if (/iPhone|iPad|iPod|CriOS|FxiOS/i.test(ua)) return false;
+      const match = ua.match(/(?:Chrome|Chromium|Edg)\/(\d+)/);
+      if (!match) return false;
+      return parseInt(match[1], 10) >= 135;
+    }
+
+    function pitchPlan() {
+      if ((voicePrefs[currentLang] || 'auto') !== 'auto') return 'manual';
+      if (sharedTrackBroken) return 'unavailable';
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return 'unavailable';
+      const AudioCtor = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtor) return 'unavailable';
+      if (!supportsRecognitionAudioTrack()) return 'unavailable';
+      return 'shared';
+    }
+
+    function acquireMicStream() {
+      return navigator.mediaDevices.getUserMedia({ audio: true });
+    }
+
+    function getAudioContext() {
+      const AudioCtor = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtor) return null;
+      if (!audioContext || audioContext.state === 'closed') audioContext = new AudioCtor();
+      return audioContext;
+    }
+
+    function unlockAudioGraph() {
+      const ctx = getAudioContext();
+      if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+    }
+
+    function stopPitchCapture() {
+      if (pitchTimer) { clearInterval(pitchTimer); pitchTimer = null; }
+      if (pitchSourceNode) {
+        try { pitchSourceNode.disconnect(); } catch (e) { /* ignore */ }
+        pitchSourceNode = null;
+      }
+      if (pitchStream) {
+        pitchStream.getTracks().forEach(track => { try { track.stop(); } catch (e) { /* ignore */ } });
+        pitchStream = null;
+      }
+      pitchAnalyser = null;
+    }
+
+    function noteSharedTrackFailed() {
+      sharedTrackBroken = true;
+      try { sessionStorage.setItem(PITCH_OFF_KEY, '1'); } catch (e) { /* ignore */ }
+      pitchBlockedReason = 'device';
+      pitchAttempted = false;
+      pitchSamples = [];
+      detectedThisTurn = null;
+      captureMode = 'off';
+      recoverPlainRecognition = false;
+      stopPitchCapture();
+    }
+
+    function beginPitchMeter(stream) {
+      stopPitchCapture();
+      pitchStream = stream;
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+      try {
+        pitchSourceNode = ctx.createMediaStreamSource(stream);
+        pitchAnalyser = ctx.createAnalyser();
+        pitchAnalyser.fftSize = 2048;
+        pitchSourceNode.connect(pitchAnalyser);
+        const buf = new Float32Array(pitchAnalyser.fftSize);
+        pitchTimer = setInterval(() => {
+          if (!pitchAnalyser) return;
+          try {
+            pitchAnalyser.getFloatTimeDomainData(buf);
+            const hz = detectPitchHz(buf, ctx.sampleRate || 48000);
+            if (hz && pitchSamples.length < 400) pitchSamples.push(hz);
+          } catch (e) { /* recognition must keep working */ }
+        }, 50);
+      } catch (e) {
+        pitchAttempted = false;
+      }
+    }
+
+    function finishPitchDetection() {
+      const samples = pitchSamples.slice();
+      const attempted = pitchAttempted;
+      stopPitchCapture();
+      captureMode = 'off';
+      recoverPlainRecognition = false;
+      pitchSamples = [];
+      pitchAttempted = false;
+      const result = classifyPitchSamples(samples);
+      if (result) {
+        detectedThisTurn = { lang: currentLang, gender: result.gender };
+        pitchBlockedReason = null;
+      } else if (attempted && pitchBlockedReason !== 'device') {
+        detectedThisTurn = null;
+        pitchBlockedReason = 'failed';
+      } else {
+        detectedThisTurn = null;
+      }
+    }
+
+    // Normalised difference function. Downsamples to about 8 kHz so it stays
+    // cheap on a phone, then prefers the lowest strong period so a harmonic
+    // does not get reported instead of the speaking pitch.
+    function detectPitchHz(buf, sampleRate) {
+      const targetRate = 8000;
+      let data = buf;
+      let rate = sampleRate;
+      if (sampleRate > targetRate * 1.25 && buf && buf.length) {
+        const ratio = sampleRate / targetRate;
+        const n = Math.floor(buf.length / ratio);
+        const out = new Float32Array(n);
+        for (let i = 0; i < n; i++) {
+          const start = Math.floor(i * ratio);
+          const end = Math.min(buf.length, Math.floor((i + 1) * ratio));
+          let sum = 0;
+          for (let j = start; j < end; j++) sum += buf[j];
+          out[i] = sum / Math.max(1, end - start);
+        }
+        data = out;
+        rate = sampleRate * n / buf.length;
+      }
+      const size = data ? data.length : 0;
+      if (size < 64 || !rate) return null;
+      let rms = 0;
+      for (let i = 0; i < size; i++) rms += data[i] * data[i];
+      rms = Math.sqrt(rms / size);
+      if (rms < 0.01) return null;
+
+      const minF = 70;
+      const maxF = 400;
+      const maxPeriod = Math.min(size - 2, Math.floor(rate / minF));
+      const minPeriod = Math.max(2, Math.floor(rate / maxF));
+      if (maxPeriod <= minPeriod) return null;
+
+      const nsdf = new Float32Array(maxPeriod + 2);
+      for (let tau = minPeriod; tau <= maxPeriod; tau++) {
+        let sum = 0;
+        let norm = 0;
+        const limit = size - tau;
+        for (let i = 0; i < limit; i++) {
+          const a = data[i];
+          const b = data[i + tau];
+          sum += a * b;
+          norm += a * a + b * b;
+        }
+        nsdf[tau] = norm > 0 ? (2 * sum) / norm : 0;
+      }
+
+      let bestTau = -1;
+      let bestVal = 0;
+      for (let tau = minPeriod; tau <= maxPeriod; tau++) {
+        if (nsdf[tau] > bestVal) { bestVal = nsdf[tau]; bestTau = tau; }
+      }
+      if (bestTau < 0 || bestVal < 0.45) return null;
+
+      let chosen = bestTau;
+      for (let tau = minPeriod + 1; tau < bestTau; tau++) {
+        if (nsdf[tau] >= bestVal * 0.88 && nsdf[tau] >= nsdf[tau - 1] && nsdf[tau] >= nsdf[tau + 1]) {
+          chosen = tau;
+          break;
+        }
+      }
+      const x0 = nsdf[chosen - 1] || 0;
+      const x1 = nsdf[chosen];
+      const x2 = nsdf[chosen + 1] || 0;
+      const denom = x0 - 2 * x1 + x2;
+      const shift = denom !== 0 ? (0.5 * (x0 - x2) / denom) : 0;
+      const period = chosen + shift;
+      if (!(period > 0)) return null;
+      const freq = rate / period;
+      if (freq < minF || freq > maxF) return null;
+      return freq;
+    }
+
+    function classifyPitchSamples(samples) {
+      const valid = [];
+      const list = samples || [];
+      for (let i = 0; i < list.length; i++) {
+        const freq = list[i];
+        if (typeof freq === 'number' && freq >= 70 && freq <= 400) valid.push(freq);
+      }
+      if (valid.length < 5) return null;
+      valid.sort((a, b) => a - b);
+      const trim = valid.length >= 10 ? Math.floor(valid.length * 0.15) : 0;
+      const core = valid.slice(trim, valid.length - trim);
+      const median = core[Math.floor((core.length - 1) / 2)];
+      if (!(median > 0)) return null;
+      return { hz: median, gender: median < MALE_BELOW_HZ ? 'male' : 'female' };
+    }
+
+    function voiceHaystack(voice) {
+      return ((voice && voice.name) || '') + ' ' + ((voice && voice.voiceURI) || '');
+    }
+
+    function hasVoiceToken(id, word) {
+      return new RegExp('(^|[^a-z])' + word + '([^a-z]|$)').test(id);
+    }
+
+    function guessVoiceGender(voice) {
+      const id = voiceHaystack(voice).toLowerCase();
+      if (!id.trim()) return null;
+      // "female" contains the letters of "male", so the female test has to win.
+      if (hasVoiceToken(id, 'female') || id.indexOf('#female') !== -1) return 'female';
+      if (hasVoiceToken(id, 'male') || id.indexOf('#male') !== -1) return 'male';
+
+      const femaleIds = ['en-gb-x-gba', 'en-gb-x-gbc', 'en-gb-x-fis', 'pl-pl-x-oda'];
+      const maleIds = ['en-gb-x-rjs', 'en-gb-x-gbb', 'en-gb-x-gbd', 'pl-pl-x-bmg'];
+      for (let i = 0; i < femaleIds.length; i++) if (id.indexOf(femaleIds[i]) !== -1) return 'female';
+      for (let i = 0; i < maleIds.length; i++) if (id.indexOf(maleIds[i]) !== -1) return 'male';
+
+      const femaleNames = ['hazel', 'kate', 'serena', 'sonia', 'libby', 'maisie', 'fiona', 'susan', 'martha', 'zosia', 'zofia', 'paulina', 'ewa', 'agnieszka', 'maja'];
+      const maleNames = ['daniel', 'george', 'rishi', 'arthur', 'ryan', 'oliver', 'thomas', 'adam', 'marek', 'krzysztof', 'jakub', 'jacek'];
+      for (let i = 0; i < femaleNames.length; i++) if (hasVoiceToken(id, femaleNames[i])) return 'female';
+      for (let i = 0; i < maleNames.length; i++) if (hasVoiceToken(id, maleNames[i])) return 'male';
+      return null;
+    }
+
+    function voiceScore(voice) {
+      const id = voiceHaystack(voice).toLowerCase();
+      let score = 0;
+      if (/google|natural|neural|premium|enhanced/.test(id)) score += 4;
+      if (/network/.test(id)) score += 2;
+      if (voice && voice.localService) score += 1;
+      return score;
+    }
+
+    function voicesForLocale(voiceList, locale) {
+      const list = voiceList || [];
+      const want = (locale || '').toLowerCase();
+      const prefix = want.split('-')[0];
+      const norm = voice => (voice.lang || '').replace('_', '-').toLowerCase();
+      const exact = list.filter(voice => norm(voice) === want);
+      return exact.length ? exact : list.filter(voice => norm(voice).split('-')[0] === prefix);
+    }
+
+    // Returns the best voice for locale and gender. Pitch stays at 1 when the
+    // voice itself matches; otherwise it is lowered for male or raised for female.
+    function selectVoice(voiceList, locale, gender) {
+      const pool = voicesForLocale(voiceList, locale);
+      if (!pool.length) return { voice: null, pitch: 1, matchedGender: false };
+      const ranked = pool.slice().sort((a, b) => voiceScore(b) - voiceScore(a));
+      if (gender === 'male' || gender === 'female') {
+        const gendered = ranked.filter(voice => guessVoiceGender(voice) === gender);
+        if (gendered.length) return { voice: gendered[0], pitch: 1, matchedGender: true };
+        return {
+          voice: ranked[0],
+          pitch: gender === 'male' ? 0.82 : 1.2,
+          matchedGender: false
+        };
+      }
+      return { voice: ranked[0], pitch: 1, matchedGender: false };
+    }
+
     function pickVoice(locale) {
       if (!voices.length) loadVoices();
-      const want = locale.toLowerCase();
-      const prefix = want.split('-')[0];
-      const norm = v => (v.lang || '').replace('_', '-').toLowerCase();
-      const exact = voices.filter(v => norm(v) === want);
-      const pool = exact.length ? exact : voices.filter(v => norm(v).split('-')[0] === prefix);
-      if (!pool.length) return null;
-      // Prefer higher-quality voices where the name hints at it.
-      return pool.find(v => /google|natural|neural|premium|enhanced/i.test(v.name)) ||
-             pool.find(v => v.localService) || pool[0];
+      return selectVoice(voices, locale, null).voice;
     }
 
     function splitIntoChunks(text, maxLen = 160) {
@@ -674,7 +1183,7 @@
       } catch (e) { /* ignore */ }
     }
 
-    function speakText(text, locale, onComplete) {
+    function speakText(text, locale, onComplete, gender) {
       let finished = false;
       const done = () => {
         if (finished) return;
@@ -691,7 +1200,9 @@
       const synth = window.speechSynthesis;
       synth.cancel();
       const chunks = splitIntoChunks(text);
-      const voice = pickVoice(locale);
+      if (!voices.length) loadVoices();
+      const chosen = selectVoice(voices, locale, gender);
+      const voice = chosen.voice;
       let index = 0;
       let chunkTimer = null;
 
@@ -703,6 +1214,7 @@
         utterance.lang = locale;
         if (voice) utterance.voice = voice;
         utterance.rate = 1;
+        utterance.pitch = chosen.pitch;
 
         let advanced = false;
         const next = () => {
@@ -740,7 +1252,7 @@
     function replaySpeech() {
       if (lastTranslation) {
         unlockSpeech();
-        speakText(lastTranslation, lastTargetLocale, () => updateUIState('ready'));
+        speakText(lastTranslation, lastTargetLocale, () => updateUIState('ready'), lastVoiceGender);
       }
     }
 
@@ -807,6 +1319,11 @@
       statusBadge.className = 'status-badge' + (className ? ' ' + className : '');
     }
 
+    document.querySelectorAll('.voice-pref-options button').forEach(btn => {
+      btn.addEventListener('click', () => setVoicePref(btn.dataset.side, btn.dataset.voice));
+    });
+    voicePrefs = loadVoicePrefs();
+    renderVoicePrefs();
     updateUIState('ready');
   </script>
 </body>
