@@ -1,8 +1,8 @@
-# English–Polish Voice Translator
+# English–Polish Voice Interpreter
 
-A single-page web app that translates between English and Polish. Speak into the microphone or type a sentence. Speech recognition and spoken playback use the browser’s Web Speech API.
+A single-page web app that translates between English and Polish. Speak into the microphone, take turns in a hands-free loop, or type a sentence. Speech recognition and spoken playback use the browser’s Web Speech API.
 
-The spoken translation tries to match the speaker: a male voice when a man is speaking, a female voice when a woman is speaking. Auto guesses from the microphone pitch. Choose Male or Female for the English speaker or the Polish speaker if the guess is wrong. On phones, automatic detection is used only when it can share the microphone with speech recognition; otherwise pick Male or Female.
+Choose a male or female voice for the spoken translation. That choice is saved on the phone.
 
 **Live site:** https://pblearningconsultancy.github.io/pl-translator/
 
