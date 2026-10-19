@@ -3,26 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>English &amp; Polish Voice Translator</title>
+  <title>English &amp; Polish Voice Interpreter</title>
   <style>
     :root {
-      --bg-colour: #f8fafc;
-      --card-bg: #ffffff;
-      --en-colour: #2563eb;
-      --en-hover: #1d4ed8;
-      --pl-colour: #dc2626;
-      --pl-hover: #b91c1c;
-      --active-green: #059669;
-      --turn-glow: #facc15;
-      --text-main: #0f172a;
-      --text-muted: #64748b;
-      --border-colour: #e2e8f0;
-      --panel-bg: #f1f5f9;
-      --warn-bg: #fef3c7;
-      --warn-text: #92400e;
-      --error-colour: #b91c1c;
-      --radius: 14px;
-      --shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+      --navy: #0c1a40;
+      --navy-deep: #071433;
+      --navy-mid: #14285c;
+      --gold: #e0b33a;
+      --gold-bright: #f5c542;
+      --ink: #12203f;
+      --muted: #5c6b86;
+      --line: #d9e1ee;
+      --page: #e7edf6;
+      --card: #ffffff;
+      --teal: #0f766e;
+      --purple: #7e22ce;
+      --radius: 18px;
     }
 
     * { box-sizing: border-box; }
@@ -31,598 +27,754 @@
       margin: 0;
       min-height: 100vh;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: var(--bg-colour);
-      color: var(--text-main);
+      background: var(--page);
+      color: var(--ink);
+    }
+
+    .hero {
+      background: linear-gradient(180deg, #06102c 0%, #0c1d4e 70%, #16306f 100%);
+      color: #fff;
+      padding: 18px 16px 22px;
+      border-bottom: 3px solid var(--gold);
+    }
+
+    .hero-top {
       display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      padding: 24px 12px;
-    }
-
-    .card {
-      width: 100%;
-      max-width: 550px;
-      background: var(--card-bg);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 24px;
-      border: 1px solid var(--border-colour);
-    }
-
-    header { text-align: center; margin-bottom: 16px; }
-    header h1 { font-size: 1.5rem; margin: 0 0 10px; }
-
-    .status-badge {
-      display: inline-block;
-      padding: 6px 14px;
-      border-radius: 999px;
-      font-size: 0.9rem;
-      font-weight: 600;
-      background: var(--panel-bg);
-      color: var(--text-muted);
-      transition: background 0.3s ease, color 0.3s ease;
-    }
-    .status-badge.listening {
-      background: var(--active-green);
-      color: #fff;
-      animation: pulse 1.4s infinite;
-    }
-    .status-badge.speaking {
-      background: var(--en-colour);
-      color: #fff;
-      animation: pulse 1.4s infinite;
-    }
-    .status-badge.error {
-      background: #fee2e2;
-      color: var(--error-colour);
-    }
-    @keyframes pulse {
-      0%   { box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.5); }
-      70%  { box-shadow: 0 0 0 10px rgba(5, 150, 105, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(5, 150, 105, 0); }
-    }
-
-    .notice {
-      font-size: 0.85rem;
-      line-height: 1.4;
-      background: var(--warn-bg);
-      color: var(--warn-text);
-      border-radius: 10px;
-      padding: 10px 12px;
-      margin-bottom: 14px;
-    }
-    .notice.hidden { display: none; }
-    .help-note {
-      font-size: 0.78rem;
-      color: var(--text-muted);
-      line-height: 1.4;
-      margin-top: 16px;
-      text-align: center;
-    }
-
-    .mode-switch {
-      display: flex;
-      gap: 8px;
-      background: var(--panel-bg);
-      padding: 4px;
-      border-radius: 10px;
-      margin-bottom: 16px;
-    }
-    .mode-switch button {
-      flex: 1;
-      border: none;
-      background: transparent;
-      padding: 10px;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-      color: var(--text-muted);
-      transition: background 0.2s ease, color 0.2s ease;
-    }
-    .mode-switch button.active {
-      background: var(--card-bg);
-      color: var(--text-main);
-      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.1);
-    }
-
-    .stop-btn {
-      display: none;
-      width: 100%;
-      margin-bottom: 16px;
-      padding: 12px;
-      border: none;
-      border-radius: 10px;
-      background: var(--text-main);
-      color: #fff;
-      font-weight: 700;
-      font-size: 1rem;
-      cursor: pointer;
-    }
-    .stop-btn.visible { display: block; }
-
-    .controls {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
       gap: 12px;
-      margin-bottom: 14px;
+      align-items: flex-start;
     }
-    .voice-prefs { margin-bottom: 8px; }
-    .voice-pref {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 6px;
-    }
-    .voice-pref-label {
-      flex: 0 0 6.8rem;
-      font-size: 0.75rem;
-      font-weight: 700;
-      color: var(--text-muted);
-    }
-    .voice-pref-options { flex: 1; display: flex; gap: 4px; }
-    .voice-pref-options button {
-      flex: 1;
-      border: 1px solid var(--border-colour);
-      background: var(--card-bg);
-      border-radius: 8px;
-      padding: 6px 2px;
-      font-size: 0.75rem;
-      font-weight: 700;
-      color: var(--text-muted);
-      cursor: pointer;
-      touch-action: manipulation;
-    }
-    .voice-pref[data-side="en"] .voice-pref-options button.active {
-      border-color: var(--en-colour);
-      color: var(--en-colour);
-      background: #eff6ff;
-    }
-    .voice-pref[data-side="pl"] .voice-pref-options button.active {
-      border-color: var(--pl-colour);
-      color: var(--pl-colour);
-      background: #fef2f2;
-    }
-    .voice-note {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      line-height: 1.35;
-      margin: 0 0 14px;
-    }
-    .voice-hint {
-      font-size: 0.78rem;
-      color: var(--text-muted);
-      min-height: 1.15em;
-      margin: 8px 0 0;
-    }
-    .mic-btn {
-      border: none;
-      border-radius: var(--radius);
-      padding: 22px 10px;
-      color: #fff;
-      font-size: 1.05rem;
-      font-weight: 700;
-      cursor: pointer;
+
+    .flag-col {
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 6px;
-      transition: transform 0.15s ease, background 0.2s ease, box-shadow 0.2s ease;
+      flex: none;
+    }
+
+    .flag {
+      width: 46px;
+      height: 32px;
+      border-radius: 7px;
+      overflow: hidden;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25);
+      display: block;
+    }
+
+    .flag svg { display: block; width: 100%; height: 100%; }
+
+    .swap-fab {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px solid var(--gold);
+      background: #0b1738;
+      color: var(--gold-bright);
+      display: grid;
+      place-items: center;
+      padding: 0;
+      cursor: pointer;
       touch-action: manipulation;
     }
-    .mic-btn small { font-weight: 400; font-size: 0.8rem; opacity: 0.9; }
-    .mic-btn:active { transform: scale(0.97); }
-    .mic-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-    #btnEn { background: var(--en-colour); }
-    #btnEn:hover:not(:disabled) { background: var(--en-hover); }
-    #btnPl { background: var(--pl-colour); }
-    #btnPl:hover:not(:disabled) { background: var(--pl-hover); }
-    .mic-btn.active-turn {
-      box-shadow: 0 0 0 4px var(--turn-glow), 0 0 18px var(--turn-glow);
+
+    .swap-fab svg { width: 16px; height: 16px; }
+
+    .hero-copy { min-width: 0; padding-top: 2px; }
+
+    h1 {
+      font-size: 1.28rem;
+      line-height: 1.2;
+      margin: 0 0 6px;
+      letter-spacing: -0.01em;
     }
 
-    .panel {
-      background: var(--panel-bg);
-      border-radius: 10px;
-      padding: 12px 14px;
+    .subtitle {
+      margin: 0;
+      color: #c9d5ef;
+      font-size: 0.84rem;
+      line-height: 1.35;
+    }
+
+    .status-pill {
+      margin: 16px 0 0;
+      background: rgba(4, 10, 28, 0.55);
+      border-radius: 999px;
+      padding: 10px 14px;
+      text-align: center;
+      font-weight: 650;
+      font-size: 0.9rem;
+      line-height: 1.35;
+    }
+
+    .status-pill .dots {
+      color: var(--gold-bright);
+      letter-spacing: 2px;
+      margin-right: 4px;
+    }
+
+    .status-pill.listening { box-shadow: inset 0 0 0 1px #34d399; }
+    .status-pill.speaking { box-shadow: inset 0 0 0 1px #93c5fd; }
+    .status-pill.error { box-shadow: inset 0 0 0 1px #fca5a5; }
+
+    main {
+      width: min(440px, 100%);
+      margin: 0 auto;
+      padding: 14px 12px 28px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 24px rgba(16, 32, 68, 0.08);
+      padding: 16px 14px 14px;
       margin-bottom: 12px;
-      min-height: 70px;
-    }
-    .panel-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 6px;
-    }
-    .panel-label {
-      font-size: 0.78rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      color: var(--text-muted);
-    }
-    .panel-text { font-size: 1.1rem; line-height: 1.45; word-wrap: break-word; }
-    .panel-text.interim { color: var(--text-muted); font-style: italic; }
-    .replay-btn {
-      border: 1px solid var(--border-colour);
-      background: var(--card-bg);
-      border-radius: 8px;
-      padding: 4px 10px;
-      cursor: pointer;
-      font-size: 0.85rem;
     }
 
-    .manual-input { margin-top: 16px; }
-    .direction-toggle {
-      display: flex;
-      gap: 6px;
-      margin-bottom: 8px;
+    .eyebrow {
+      margin: 0 0 6px;
+      color: #1e3a8a;
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
     }
-    .direction-toggle button {
-      flex: 1;
-      border: 2px solid var(--border-colour);
-      background: var(--card-bg);
-      border-radius: 8px;
-      padding: 6px;
-      font-size: 0.85rem;
-      font-weight: 600;
+
+    .eyebrow::before {
+      content: "";
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--gold);
+      margin-right: 6px;
+      transform: translateY(-1px);
+    }
+
+    h2 {
+      margin: 0 0 6px;
+      font-size: 1.2rem;
+      color: var(--navy);
+    }
+
+    .lede {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
+    button, select { font-family: inherit; }
+
+    .btn-primary, .btn-secondary, .btn-dir, .phrase, .speaker, .btn-gold, .btn-text, .linkish {
+      touch-action: manipulation;
       cursor: pointer;
-      color: var(--text-muted);
     }
-    .direction-toggle button.active[data-lang="en"] { border-color: var(--en-colour); color: var(--en-colour); }
-    .direction-toggle button.active[data-lang="pl"] { border-color: var(--pl-colour); color: var(--pl-colour); }
-    .input-row { display: flex; gap: 8px; }
-    .input-row input {
-      flex: 1;
-      min-width: 0;
+
+    .btn-primary {
+      width: 100%;
+      border: none;
+      border-radius: 12px;
+      background: var(--navy);
+      color: #fff;
+      font-weight: 750;
+      font-size: 1rem;
+      padding: 13px 14px;
+    }
+
+    .btn-primary.running { background: #3f1d1d; }
+
+    .btn-secondary {
+      width: 100%;
+      margin-top: 8px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--navy);
+      font-weight: 700;
+      font-size: 0.95rem;
+      padding: 12px 14px;
+    }
+
+    .voice-panel {
+      margin-top: 14px;
+      background: linear-gradient(180deg, #101c3f, #0c1733);
+      border: 1px solid rgba(224, 179, 58, 0.55);
+      border-radius: 16px;
       padding: 12px;
+      color: #e8eefc;
+    }
+
+    .field-label {
+      display: block;
+      margin: 8px 0 6px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #f3d78a;
+    }
+
+    .voice-panel select {
+      width: 100%;
+      background: #0b142c;
+      color: #fff;
+      border: 1px solid var(--gold);
       border-radius: 10px;
-      border: 1px solid var(--border-colour);
+      padding: 11px 12px;
       font-size: 1rem;
     }
-    .input-row button {
-      padding: 12px 16px;
+
+    .test-row, .dir-row { display: flex; gap: 8px; }
+
+    .test-row { margin-top: 10px; }
+
+    .test-row button {
+      flex: 1;
       border: none;
       border-radius: 10px;
-      background: var(--active-green);
       color: #fff;
-      font-weight: 700;
-      cursor: pointer;
+      font-weight: 750;
+      padding: 11px 8px;
+      font-size: 0.86rem;
     }
+
+    #btnTestMale { background: var(--teal); }
+    #btnTestFemale { background: var(--purple); }
+
+    .chime-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .linkish {
+      border: none;
+      background: transparent;
+      color: #f6d78a;
+      font-weight: 750;
+      padding: 6px 0;
+      font-size: 0.92rem;
+    }
+
+    .check {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      margin-top: 8px;
+      font-size: 0.82rem;
+      line-height: 1.35;
+      color: #d5def3;
+    }
+
+    .check input { margin-top: 2px; flex: none; }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      margin: 4px 2px 8px;
+    }
+
+    .selected-turn {
+      color: #1d4ed8;
+      font-weight: 750;
+      font-size: 0.82rem;
+      text-align: right;
+    }
+
+    .speaker {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      text-align: left;
+      border: none;
+      border-radius: 16px;
+      padding: 14px 12px;
+      margin-bottom: 10px;
+      color: #fff;
+      background: linear-gradient(180deg, #17306a, #0d1c45);
+      box-shadow: 0 8px 18px rgba(12, 26, 64, 0.22);
+    }
+
+    .speaker.selected { box-shadow: 0 0 0 2px var(--gold), 0 8px 18px rgba(12, 26, 64, 0.22); }
+
+    .speaker strong { display: block; font-size: 1.02rem; margin-bottom: 3px; }
+    .speaker small { display: block; color: #c9d6f5; font-size: 0.78rem; line-height: 1.3; }
+
+    .mic-dot {
+      width: 42px;
+      height: 42px;
+      flex: none;
+      border-radius: 50%;
+      border: 2px solid var(--gold);
+      display: grid;
+      place-items: center;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .mic-dot svg { width: 18px; height: 18px; }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .panel-title {
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #1e3a8a;
+    }
+
+    .panel-actions { display: flex; gap: 6px; align-items: center; }
+
+    .btn-text {
+      border: none;
+      background: transparent;
+      color: #1d4ed8;
+      font-weight: 700;
+      font-size: 0.85rem;
+      padding: 4px 2px;
+    }
+
+    .btn-gold {
+      border: none;
+      background: var(--gold-bright);
+      color: #1c1403;
+      font-weight: 800;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+    }
+
+    .panel-text {
+      font-size: 1.05rem;
+      line-height: 1.45;
+      min-height: 2.6em;
+      word-wrap: break-word;
+    }
+
+    .panel-text.placeholder { color: var(--muted); }
+    .panel-text.interim { color: var(--muted); font-style: italic; }
+
+    .lang-tag {
+      margin: 0 0 4px;
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .text-input {
+      width: 100%;
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 1rem;
+      margin-bottom: 10px;
+    }
+
+    .btn-dir {
+      flex: 1;
+      border: none;
+      border-radius: 12px;
+      background: var(--navy);
+      color: #fff;
+      font-weight: 800;
+      padding: 12px 8px;
+      font-size: 0.92rem;
+    }
+
+    .btn-dir.active { box-shadow: inset 0 0 0 2px var(--gold); }
+
+    .phrase-wrap { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+
+    .phrase {
+      border: 1px solid var(--line);
+      background: #f8fafc;
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 8px 10px;
+      font-size: 0.78rem;
+      line-height: 1.3;
+      text-align: left;
+    }
+
+    .log-head { align-items: center; }
+    .log-count { color: var(--muted); font-size: 0.82rem; font-weight: 700; }
+
+    .log-list { list-style: none; margin: 0; padding: 0; }
+    .log-list li {
+      border-top: 1px solid var(--line);
+      padding: 10px 0;
+    }
+    .log-list li:first-child { border-top: none; }
+    .log-meta { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #1e3a8a; }
+    .log-list p { margin: 4px 0 0; line-height: 1.35; }
+    .log-target { color: #0f172a; font-weight: 650; }
+    .log-empty { margin: 0; color: var(--muted); font-size: 0.9rem; }
+
+    .notice {
+      background: #fef3c7;
+      color: #92400e;
+      border-radius: 12px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+    .notice.hidden { display: none; }
+
+    .help {
+      margin: 4px 6px 0;
+      color: var(--muted);
+      font-size: 0.75rem;
+      line-height: 1.4;
+      text-align: center;
+    }
+
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
   </style>
 </head>
 <body>
-  <main class="card">
-    <header>
-      <h1>🇬🇧 English ⇄ Polish 🇵🇱</h1>
-      <span id="statusBadge" class="status-badge" role="status" aria-live="polite">Ready</span>
-    </header>
+  <header class="hero">
+    <div class="hero-top">
+      <div class="flag-col">
+        <span class="flag" title="United Kingdom">
+          <svg viewBox="0 0 60 30" aria-hidden="true">
+            <clipPath id="uk"><rect width="60" height="30" rx="2"/></clipPath>
+            <g clip-path="url(#uk)">
+              <rect width="60" height="30" fill="#012169"/>
+              <path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="8"/>
+              <path d="M0,0 L60,30 M60,0 L0,30" stroke="#C8102E" stroke-width="4"/>
+              <path d="M30,0 V30 M0,15 H60" stroke="#fff" stroke-width="14"/>
+              <path d="M30,0 V30 M0,15 H60" stroke="#C8102E" stroke-width="8"/>
+            </g>
+          </svg>
+        </span>
+        <button id="btnSwapHeader" class="swap-fab" type="button" aria-label="Swap turn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M7 7h11l-3-3M17 17H6l3 3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <span class="flag" title="Poland">
+          <svg viewBox="0 0 60 40" aria-hidden="true">
+            <rect width="60" height="20" fill="#fff"/>
+            <rect y="20" width="60" height="20" fill="#dc143c"/>
+          </svg>
+        </span>
+      </div>
+      <div class="hero-copy">
+        <h1>English &amp; Polish Voice Interpreter</h1>
+        <p class="subtitle">Hands-free conversation between English and Polish, read aloud in a male or female voice.</p>
+      </div>
+    </div>
+    <div id="statusBadge" class="status-pill" role="status" aria-live="polite"><span class="dots">● ● ●</span> Ready — start Hands-Free or select a speaker</div>
+  </header>
 
+  <main>
     <div id="supportNotice" class="notice hidden"></div>
 
-    <div class="mode-switch" role="group" aria-label="Mode">
-      <button id="modeManual" class="active" type="button" onclick="setMode('manual')">Manual Mode</button>
-      <button id="modeAuto" type="button" onclick="setMode('auto')">Hands-Free Loop</button>
+    <section class="card">
+      <p class="eyebrow">Hands-free conversation</p>
+      <h2>Hands-Free Conversation Loop</h2>
+      <p class="lede">Listens in turn for English and Polish, then speaks the translation.</p>
+      <button id="btnLoop" class="btn-primary" type="button">Start Hands-Free Loop</button>
+      <button id="btnSwap" class="btn-secondary" type="button">Swap Turn (EN ⇄ PL)</button>
+
+      <div class="voice-panel">
+        <label class="field-label" for="voiceGender">Voice</label>
+        <select id="voiceGender">
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+        </select>
+        <div class="test-row">
+          <button id="btnTestMale" type="button">Test Male Voice</button>
+          <button id="btnTestFemale" type="button">Test Female Voice</button>
+        </div>
+        <label class="field-label" for="voiceRate">Voice speed</label>
+        <select id="voiceRate">
+          <option value="0.85">0.85× (Slower)</option>
+          <option value="1">1.0× (Normal)</option>
+          <option value="1.15">1.15× (Faster)</option>
+        </select>
+        <div class="chime-row">
+          <button id="btnTestChimes" class="linkish" type="button">Test Chimes</button>
+        </div>
+        <label class="check">
+          <input id="chimeOn" type="checkbox" checked>
+          <span>Play a readiness chime when the microphone opens (660 Hz English, 528 Hz Polish).</span>
+        </label>
+      </div>
+    </section>
+
+    <div class="section-head">
+      <p class="eyebrow">Active speaker turn</p>
+      <div class="selected-turn">Selected turn<br><span id="selectedTurn">English Speaker</span></div>
     </div>
 
-    <button id="btnStop" class="stop-btn" type="button" onclick="stopLoop()">⏹ Stop Hands-Free Loop</button>
+    <button id="cardEn" class="speaker selected" type="button">
+      <span>
+        <strong>🇬🇧 English Speaker</strong>
+        <small>Listens in English (en-GB) → speaks Polish (pl-PL)</small>
+      </span>
+      <span class="mic-dot" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#f5c542" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4M8 21h8" stroke-linecap="round"/></svg>
+      </span>
+    </button>
+    <button id="cardPl" class="speaker" type="button">
+      <span>
+        <strong>🇵🇱 Mówca polski</strong>
+        <small>Słucha po polsku (pl-PL) → mówi po angielsku (en-GB)</small>
+      </span>
+      <span class="mic-dot" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#f5c542" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4M8 21h8" stroke-linecap="round"/></svg>
+      </span>
+    </button>
 
-    <div class="controls">
-      <button id="btnEn" class="mic-btn" type="button" onclick="handleMicClick('en')">
-        🎤 Speak English
-        <small>Translates to Polish</small>
-      </button>
-      <button id="btnPl" class="mic-btn" type="button" onclick="handleMicClick('pl')">
-        🎤 Mów po polsku
-        <small>Translates to English</small>
-      </button>
-    </div>
+    <section class="card">
+      <div class="panel-head">
+        <span class="panel-title">Heard (original)</span>
+        <button id="copySource" class="btn-text" type="button">Copy</button>
+      </div>
+      <p id="sourceLang" class="lang-tag">English</p>
+      <div id="sourceText" class="panel-text placeholder">Tap a speaker button, start the Hands-Free Loop, or type below.</div>
+    </section>
 
-    <div class="voice-prefs">
-      <div class="voice-pref" data-side="en">
-        <span class="voice-pref-label">English speaker</span>
-        <div class="voice-pref-options" role="group" aria-label="English speaker voice">
-          <button type="button" data-side="en" data-voice="auto" aria-pressed="true">Auto</button>
-          <button type="button" data-side="en" data-voice="male" aria-pressed="false">Male</button>
-          <button type="button" data-side="en" data-voice="female" aria-pressed="false">Female</button>
+    <section class="card">
+      <div class="panel-head">
+        <span class="panel-title">Translation (spoken reply)</span>
+        <div class="panel-actions">
+          <button id="copyTarget" class="btn-text" type="button">Copy</button>
+          <button id="btnReplay" class="btn-gold" type="button">Replay Audio</button>
         </div>
       </div>
-      <div class="voice-pref" data-side="pl">
-        <span class="voice-pref-label">Polish speaker</span>
-        <div class="voice-pref-options" role="group" aria-label="Polish speaker voice">
-          <button type="button" data-side="pl" data-voice="auto" aria-pressed="true">Auto</button>
-          <button type="button" data-side="pl" data-voice="male" aria-pressed="false">Male</button>
-          <button type="button" data-side="pl" data-voice="female" aria-pressed="false">Female</button>
-        </div>
-      </div>
-    </div>
-    <p class="voice-note">Auto guesses male or female from the voice. Choose Male or Female if that guess is wrong.</p>
-
-    <section class="panel">
-      <div class="panel-header">
-        <span id="sourceLabel" class="panel-label">Heard</span>
-      </div>
-      <div id="sourceText" class="panel-text">...</div>
+      <p id="targetLang" class="lang-tag">Polish</p>
+      <div id="targetText" class="panel-text placeholder">…</div>
     </section>
 
-    <section class="panel">
-      <div class="panel-header">
-        <span id="targetLabel" class="panel-label">Translation</span>
-        <button id="btnReplay" class="replay-btn" type="button" onclick="replaySpeech()">🔊 Replay</button>
+    <section class="card">
+      <p class="eyebrow">Manual text input</p>
+      <h2>Type instead</h2>
+      <p class="lede">Use this when you are typing, or if the microphone is unavailable.</p>
+      <input id="textInput" class="text-input" type="text" placeholder="Type a message in English or Polish…" autocomplete="off">
+      <div class="dir-row">
+        <button id="btnEnPl" class="btn-dir active" type="button">EN → PL</button>
+        <button id="btnPlEn" class="btn-dir" type="button">PL → EN</button>
       </div>
-      <div id="targetText" class="panel-text">...</div>
-      <p id="voiceHint" class="voice-hint" aria-live="polite"></p>
+      <p class="field-label" style="color:#1e3a8a">Quick phrases</p>
+      <div id="phraseWrap" class="phrase-wrap"></div>
     </section>
 
-    <section class="manual-input">
-      <div class="direction-toggle" role="group" aria-label="Typed text language">
-        <button id="typeEn" data-lang="en" class="active" type="button" onclick="setTypedLang('en')">Type English → Polski</button>
-        <button id="typePl" data-lang="pl" type="button" onclick="setTypedLang('pl')">Pisz po polsku → English</button>
+    <section class="card">
+      <div class="panel-head log-head">
+        <span class="panel-title">Conversation log</span>
+        <span id="logCount" class="log-count">0 turns</span>
+        <button id="btnClearLog" class="btn-text" type="button">Clear Log</button>
       </div>
-      <div class="input-row">
-        <input id="textInput" type="text" placeholder="Type English text here..." autocomplete="off">
-        <button id="btnTranslate" type="button" onclick="translateTyped()">Translate</button>
-      </div>
+      <p id="logEmpty" class="log-empty">No turns yet.</p>
+      <ol id="logList" class="log-list"></ol>
     </section>
 
-    <p class="help-note">
-      Open this page over <strong>https://</strong> or <strong>http://localhost</strong>, or as a local file in Chrome or Edge,
-      and allow microphone access when asked. Speech recognition works in Chrome, Edge and Safari; Firefox can use typed text only.
-    </p>
+    <p class="help">Works best in Chrome on Android. Safari on iPhone may have limited speech recognition. Allow the microphone, and keep an internet connection. Translation uses an unofficial Google endpoint and may stop without notice.</p>
   </main>
 
   <script>
     'use strict';
 
-    // ---------- Elements ----------
     const statusBadge = document.getElementById('statusBadge');
     const supportNotice = document.getElementById('supportNotice');
-    const btnEn = document.getElementById('btnEn');
-    const btnPl = document.getElementById('btnPl');
-    const btnStop = document.getElementById('btnStop');
-    const modeManualBtn = document.getElementById('modeManual');
-    const modeAutoBtn = document.getElementById('modeAuto');
-    const sourceLabel = document.getElementById('sourceLabel');
+    const btnLoop = document.getElementById('btnLoop');
+    const cardEn = document.getElementById('cardEn');
+    const cardPl = document.getElementById('cardPl');
+    const selectedTurnEl = document.getElementById('selectedTurn');
+    const sourceLangEl = document.getElementById('sourceLang');
     const sourceTextEl = document.getElementById('sourceText');
-    const targetLabel = document.getElementById('targetLabel');
+    const targetLangEl = document.getElementById('targetLang');
     const targetTextEl = document.getElementById('targetText');
     const textInput = document.getElementById('textInput');
-    const voiceHint = document.getElementById('voiceHint');
+    const voiceGenderEl = document.getElementById('voiceGender');
+    const voiceRateEl = document.getElementById('voiceRate');
+    const chimeOnEl = document.getElementById('chimeOn');
+    const logList = document.getElementById('logList');
+    const logEmpty = document.getElementById('logEmpty');
+    const logCount = document.getElementById('logCount');
+    const btnEnPl = document.getElementById('btnEnPl');
+    const btnPlEn = document.getElementById('btnPlEn');
 
-    // ---------- State ----------
-    let mode = 'manual';          // 'manual' | 'auto'
-    let loopActive = false;       // hands-free loop running
-    let currentLang = 'en';       // whose turn it is: 'en' | 'pl'
-    let typedLang = 'en';         // language of typed text
+    const PLACEHOLDER = 'Tap a speaker button, start the Hands-Free Loop, or type below.';
+    const SETTINGS_KEY = 'plTranslatorSettings';
+    const RELISTEN_DELAY_MS = 600;
+    const ECHO_GUARD_MS = 400;
+    const FETCH_TIMEOUT_MS = 10000;
+    const CHIME_MS = 280;
+    const FATAL_ERRORS = ['not-allowed', 'service-not-allowed', 'audio-capture', 'language-not-supported'];
+    const PHRASES = [
+      { lang: 'en', text: 'Hello, how are you?' },
+      { lang: 'en', text: 'I do not understand. Could you say that again?' },
+      { lang: 'en', text: 'Please speak more slowly.' },
+      { lang: 'en', text: 'Where is the nearest station?' },
+      { lang: 'en', text: 'Thank you very much.' },
+      { lang: 'pl', text: 'Dzień dobry. Jak się Pan ma?' },
+      { lang: 'pl', text: 'Nie rozumiem. Proszę powtórzyć.' },
+      { lang: 'pl', text: 'Dziękuję bardzo.' }
+    ];
+
+    let loopActive = false;
+    let currentLang = 'en';
+    let typedLang = 'en';
     let lastTranslation = '';
     let lastTargetLocale = 'pl-PL';
-    let lastVoiceGender = null;   // gender used for the last spoken translation
-    let turnHandled = false;      // guards against translating one turn twice
+    let lastVoiceGender = 'male';
+    let turnHandled = false;
     let lastInterim = '';
     let lastError = '';
-    let session = 0;              // bumps on stop/new turn to cancel stale callbacks
-    let activeEpoch = 0;          // bumps whenever listening is stopped or restarted
-    let sessionEpoch = 0;         // epoch of the recognition that is allowed to report errors
+    let session = 0;
     let pendingTimer = null;
     let voices = [];
     let speechUnlocked = false;
-    let voicePrefs = { en: 'auto', pl: 'auto' };
-    let sharedTrackBroken = false;
-    try { sharedTrackBroken = sessionStorage.getItem('plTranslatorPitchOff') === '1'; } catch (e) { /* ignore */ }
-
-    // Pitch capture shares one microphone track with recognition. A second
-    // getUserMedia call beside SpeechRecognition steals the mic on Android
-    // (and on this desktop Chrome too), so Auto never opens the mic twice.
-    let captureMode = 'off';      // 'off' | 'shared'
-    let recoverPlainRecognition = false;
-    let pitchAttempted = false;
-    let pitchBlockedReason = null; // null | 'device' | 'failed'
-    let detectedThisTurn = null;
-    let pitchSamples = [];
-    let pitchStream = null;
-    let pitchSourceNode = null;
-    let pitchAnalyser = null;
-    let pitchTimer = null;
     let audioContext = null;
+    let log = [];
 
-    const RELISTEN_DELAY_MS = 600;   // after no-speech in the loop
-    const ECHO_GUARD_MS = 400;       // after TTS before re-listening
-    const FETCH_TIMEOUT_MS = 10000;
-    const FATAL_ERRORS = ['not-allowed', 'service-not-allowed', 'audio-capture', 'language-not-supported'];
-
-    // ---------- Support checks ----------
     const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
     const ttsSupported = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
     let recognition = null;
 
+    function loadSettings() {
+      const fallback = { gender: 'male', rate: '1', chime: true };
+      try {
+        const raw = localStorage.getItem(SETTINGS_KEY);
+        if (!raw) return fallback;
+        const parsed = JSON.parse(raw);
+        return {
+          gender: parsed && (parsed.gender === 'female' || parsed.gender === 'male') ? parsed.gender : 'male',
+          rate: parsed && ['0.85', '1', '1.15'].indexOf(String(parsed.rate)) !== -1 ? String(parsed.rate) : '1',
+          chime: parsed ? parsed.chime !== false : true
+        };
+      } catch (e) {
+        return fallback;
+      }
+    }
+
+    function saveSettings() {
+      try {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+          gender: voiceGenderEl.value === 'female' ? 'female' : 'male',
+          rate: voiceRateEl.value,
+          chime: chimeOnEl.checked
+        }));
+      } catch (e) { /* private mode */ }
+    }
+
+    (function applySettings() {
+      const settings = loadSettings();
+      voiceGenderEl.value = settings.gender;
+      voiceRateEl.value = settings.rate;
+      chimeOnEl.checked = settings.chime;
+      lastVoiceGender = settings.gender;
+    })();
+
+    voiceGenderEl.addEventListener('change', saveSettings);
+    voiceRateEl.addEventListener('change', saveSettings);
+    chimeOnEl.addEventListener('change', saveSettings);
+
     (function checkSupport() {
       const notes = [];
       if (!SpeechRecognitionCtor) {
-        notes.push('Speech recognition is not supported in this browser (for example Firefox). Use Chrome, Edge or Safari to speak, or type below — typed translation still works here.');
-        btnEn.disabled = true;
-        btnPl.disabled = true;
-        modeAutoBtn.disabled = true;
+        notes.push('Speech recognition is not supported in this browser. You can still type a sentence below.');
+        cardEn.disabled = true;
+        cardPl.disabled = true;
+        btnLoop.disabled = true;
       }
-      if (!ttsSupported) {
-        notes.push('Text-to-speech is not available in this browser, so translations will be shown but not spoken.');
-      }
+      if (!ttsSupported) notes.push('Text-to-speech is not available, so translations will be shown but not spoken.');
       if (!window.isSecureContext && location.protocol !== 'file:') {
-        notes.push('This page is not on a secure connection. The microphone only works over https://, on localhost, or when opened as a local file in Chrome or Edge.');
+        notes.push('The microphone only works over https, or on localhost.');
       }
       if (notes.length) {
-        supportNotice.innerHTML = notes.map(n => '<div>⚠️ ' + escapeHtml(n) + '</div>').join('');
+        supportNotice.textContent = notes.join(' ');
         supportNotice.classList.remove('hidden');
       }
     })();
 
-    function escapeHtml(s) {
-      return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    }
-
-    // ---------- Speech recognition ----------
     if (SpeechRecognitionCtor) {
       recognition = new SpeechRecognitionCtor();
       recognition.continuous = false;
       recognition.interimResults = true;
       recognition.maxAlternatives = 1;
 
-      recognition.onstart = () => {
-        updateUIState('listening');
-      };
+      recognition.onstart = () => updateUIState('listening');
 
       recognition.onresult = (event) => {
         if (turnHandled) return;
         let finalText = '';
         let interimText = '';
         for (let i = 0; i < event.results.length; i++) {
-          const r = event.results[i];
-          if (r.isFinal) finalText += r[0].transcript;
-          else interimText += r[0].transcript;
+          const result = event.results[i];
+          if (result.isFinal) finalText += result[0].transcript;
+          else interimText += result[0].transcript;
         }
         const shown = (finalText + ' ' + interimText).trim();
         lastInterim = shown;
-        sourceTextEl.textContent = shown || 'Listening...';
-        sourceTextEl.classList.toggle('interim', !!interimText && !finalText);
+        setSourceText(shown || 'Listening…', { interim: !!interimText && !finalText });
 
         const last = event.results[event.results.length - 1];
         if (last && last.isFinal) {
           const text = finalText.trim();
           if (!text) return;
           turnHandled = true;
-          sourceTextEl.classList.remove('interim');
-          sourceTextEl.textContent = text;
-          finishPitchDetection();
+          setSourceText(text);
           try { recognition.stop(); } catch (e) { /* already stopped */ }
           processTranslation(text, currentLang, { fromSpeech: true });
         }
       };
 
       recognition.onerror = (event) => {
-        if (activeEpoch !== sessionEpoch) return;
         lastError = event.error || 'unknown';
-        // Sharing the track failed: drop it and listen again the normal way.
-        if (captureMode === 'shared' && recoverPlainRecognition && !turnHandled &&
-            (lastError === 'audio-capture' || lastError === 'aborted')) {
-          noteSharedTrackFailed();
-          const mySession = session;
-          schedule(() => {
-            if (mySession !== session || turnHandled) return;
-            try { recognition.start(); }
-            catch (e) {
-              try { recognition.abort(); } catch (e2) { /* ignore */ }
-              schedule(() => {
-                if (mySession !== session || turnHandled) return;
-                try { recognition.start(); } catch (e3) { updateUIState('ready'); }
-              }, 250);
-            }
-          }, 200);
-          return;
-        }
-        if (FATAL_ERRORS.includes(lastError)) {
+        if (FATAL_ERRORS.indexOf(lastError) !== -1) {
           const msg = lastError === 'not-allowed' || lastError === 'service-not-allowed'
             ? 'Microphone blocked. Allow microphone access and try again.'
             : lastError === 'audio-capture'
               ? 'No microphone found.'
-              : 'This language is not supported by your browser\'s speech recognition.';
+              : 'This language is not supported by your browser’s speech recognition.';
           loopActive = false;
-          refreshStopButton();
+          refreshLoopButton();
           setStatus(msg, 'error');
         }
-        // 'no-speech', 'aborted' and 'network' are handled in onend
       };
 
       recognition.onend = () => {
-        if (turnHandled) return; // translation pipeline owns the next step
+        if (turnHandled) return;
         const mySession = session;
 
-        // Recogniser ended with interim text but no final result: use what we heard.
         if (lastInterim && lastError !== 'aborted') {
           turnHandled = true;
-          const text = lastInterim;
-          sourceTextEl.classList.remove('interim');
-          sourceTextEl.textContent = text;
-          finishPitchDetection();
-          processTranslation(text, currentLang, { fromSpeech: true });
+          setSourceText(lastInterim);
+          processTranslation(lastInterim, currentLang, { fromSpeech: true });
           return;
         }
 
-        // Pitch heard a voice but recognition got none: the shared track was not
-        // delivered. Turn detection off for this visit and do not keep failing.
-        if (captureMode === 'shared' && pitchSamples.length >= 5 && !lastInterim &&
-            lastError !== 'aborted' && lastError !== 'network' && !FATAL_ERRORS.includes(lastError)) {
-          noteSharedTrackFailed();
-          showVoiceHint('Voice detection interrupted the microphone, so it is off for this visit.');
-          if (mode === 'auto' && loopActive) {
-            sourceTextEl.textContent = 'Listening again without voice detection...';
-            schedule(() => { if (mySession === session && loopActive) startListening(); }, RELISTEN_DELAY_MS);
-            return;
-          }
-          sourceTextEl.textContent = 'Speech recognition missed that. Tap the button again.';
-          updateUIState('ready');
-          return;
-        }
+        if (FATAL_ERRORS.indexOf(lastError) !== -1) return;
 
-        if (FATAL_ERRORS.includes(lastError)) return; // status already shows the error
-
-        if (mode === 'auto' && loopActive && lastError !== 'aborted') {
-          // No speech heard: keep the same speaker's turn and listen again.
-          sourceTextEl.textContent = 'Nothing heard — listening again...';
+        if (loopActive && lastError !== 'aborted') {
+          setSourceText('Nothing heard — listening again…');
           schedule(() => { if (mySession === session && loopActive) startListening(); }, RELISTEN_DELAY_MS);
           return;
         }
 
-        if (lastError === 'no-speech') {
-          sourceTextEl.textContent = 'Nothing heard. Tap a button to try again.';
-        } else if (lastError === 'network') {
-          sourceTextEl.textContent = 'Speech recognition needs an internet connection.';
-        } else if (sourceTextEl.textContent === 'Listening...') {
-          sourceTextEl.textContent = '...';
-        }
-        if ((voicePrefs[currentLang] || 'auto') === 'auto' && pitchBlockedReason === 'device') {
-          showVoiceHint('Could not detect the voice on this device. Choose Male or Female.');
-        }
+        if (lastError === 'no-speech') setSourceText('Nothing heard. Tap a speaker to try again.');
+        else if (lastError === 'network') setSourceText('Speech recognition needs an internet connection.');
+        else if (sourceTextEl.textContent === 'Listening…') setSourceText(PLACEHOLDER, { placeholder: true });
         updateUIState('ready');
       };
-    }
-
-    // ---------- Mode handling ----------
-    function setMode(newMode) {
-      // Tapping Hands-Free Loop while it is running stops it.
-      if (newMode === 'auto' && mode === 'auto' && loopActive) {
-        stopLoop();
-        return;
-      }
-      if (newMode === mode) return;
-      stopAll();
-      mode = newMode;
-      loopActive = false;
-      modeManualBtn.classList.toggle('active', mode === 'manual');
-      modeAutoBtn.classList.toggle('active', mode === 'auto');
-      refreshStopButton();
-      updateUIState('ready');
-    }
-
-    function stopLoop() {
-      loopActive = false;
-      stopAll();
-      refreshStopButton();
-      updateUIState('ready');
-    }
-
-    function stopAll() {
-      session++;
-      activeEpoch++;
-      clearPending();
-      turnHandled = true; // makes any late onend/onresult a no-op
-      recoverPlainRecognition = false;
-      captureMode = 'off';
-      stopPitchCapture();
-      if (recognition) { try { recognition.abort(); } catch (e) { /* ignore */ } }
-      if (ttsSupported) window.speechSynthesis.cancel();
-    }
-
-    function refreshStopButton() {
-      btnStop.classList.toggle('visible', mode === 'auto' && loopActive);
-      modeAutoBtn.textContent = mode === 'auto' && loopActive ? 'Hands-Free Loop (tap to stop)' : 'Hands-Free Loop';
     }
 
     function schedule(fn, ms) {
@@ -633,127 +785,121 @@
       if (pendingTimer) { clearTimeout(pendingTimer); pendingTimer = null; }
     }
 
-    // ---------- Mic ----------
-    function handleMicClick(lang) {
+    function stopAll() {
+      session++;
+      clearPending();
+      turnHandled = true;
+      if (recognition) { try { recognition.abort(); } catch (e) { /* ignore */ } }
+      if (ttsSupported) window.speechSynthesis.cancel();
+    }
+
+    function refreshLoopButton() {
+      btnLoop.textContent = loopActive ? 'Stop Hands-Free Loop' : 'Start Hands-Free Loop';
+      btnLoop.classList.toggle('running', loopActive);
+    }
+
+    function toggleLoop() {
       if (!recognition) return;
+      if (loopActive) { stopLoop(); return; }
       unlockSpeech();
-      unlockAudioGraph();
+      unlockAudio();
       stopAll();
-      currentLang = lang;
-      if (mode === 'auto') {
-        loopActive = true;   // clicking a mic in auto mode starts the loop on that language
-        refreshStopButton();
-      }
-      // Give abort() a moment to settle before restarting (Chrome/Safari).
+      loopActive = true;
+      refreshLoopButton();
       const mySession = session;
       schedule(() => { if (mySession === session) startListening(); }, 150);
     }
 
-    async function startListening() {
+    function stopLoop() {
+      loopActive = false;
+      stopAll();
+      refreshLoopButton();
+      updateUIState('ready');
+    }
+
+    function handleMicClick(lang) {
+      if (!recognition) return;
+      unlockSpeech();
+      unlockAudio();
+      stopAll();
+      loopActive = false;
+      refreshLoopButton();
+      currentLang = lang;
+      highlightTurn(currentLang);
+      const mySession = session;
+      schedule(() => { if (mySession === session) startListening(); }, 150);
+    }
+
+    function swapTurn() {
+      const wasLoop = loopActive;
+      unlockSpeech();
+      unlockAudio();
+      stopAll();
+      currentLang = currentLang === 'en' ? 'pl' : 'en';
+      highlightTurn(currentLang);
+      loopActive = wasLoop;
+      refreshLoopButton();
+      if (wasLoop) {
+        const mySession = session;
+        schedule(() => { if (mySession === session && loopActive) startListening(); }, 150);
+      } else {
+        updateUIState('ready');
+      }
+    }
+
+    function startListening() {
       if (!recognition) return;
       session++;
-      activeEpoch++;
-      const epoch = activeEpoch;
       const mySession = session;
       turnHandled = false;
       lastInterim = '';
       lastError = '';
-      pitchSamples = [];
-      detectedThisTurn = null;
-      pitchAttempted = false;
-      captureMode = 'off';
-      recoverPlainRecognition = false;
-      showVoiceHint('');
       recognition.lang = currentLang === 'en' ? 'en-GB' : 'pl-PL';
-
-      sourceLabel.textContent = currentLang === 'en' ? 'Heard (English)' : 'Usłyszano (Polski)';
-      targetLabel.textContent = currentLang === 'en' ? 'Translation (Polski)' : 'Translation (English)';
-      sourceTextEl.classList.remove('interim');
-      sourceTextEl.textContent = 'Listening...';
-      targetTextEl.textContent = '...';
-
+      sourceLangEl.textContent = currentLang === 'en' ? 'English' : 'Polish';
+      targetLangEl.textContent = currentLang === 'en' ? 'Polish' : 'English';
+      setSourceText('Listening…');
+      targetTextEl.textContent = '…';
+      targetTextEl.classList.add('placeholder');
       highlightTurn(currentLang);
       updateUIState('listening');
 
-      const plan = pitchPlan();
-      if (plan === 'shared') {
-        pitchBlockedReason = null;
-        let stream = null;
-        try { stream = await acquireMicStream(); } catch (e) { stream = null; }
-        if (epoch !== activeEpoch || mySession !== session) {
-          if (stream) stream.getTracks().forEach(track => { try { track.stop(); } catch (e) { /* ignore */ } });
-          return;
+      const fire = () => {
+        if (mySession !== session) return;
+        try {
+          recognition.start();
+        } catch (e) {
+          try { recognition.abort(); } catch (e2) { /* ignore */ }
+          schedule(() => {
+            if (mySession !== session) return;
+            try { recognition.start(); } catch (e3) { updateUIState('ready'); }
+          }, 250);
         }
-        const track = stream && stream.getAudioTracks()[0];
-        if (track && track.readyState === 'live') {
-          beginPitchMeter(stream);
-          pitchAttempted = !!pitchAnalyser;
-          try {
-            captureMode = 'shared';
-            recoverPlainRecognition = true;
-            sessionEpoch = epoch;
-            recognition.start(track);
-            return;
-          } catch (e) {
-            // A thrown start is a timing problem, not proof that sharing is unsafe.
-            stopPitchCapture();
-            captureMode = 'off';
-            recoverPlainRecognition = false;
-            pitchAttempted = false;
-            pitchBlockedReason = 'failed';
-          }
-        } else {
-          pitchBlockedReason = 'failed';
-          if (stream) stream.getTracks().forEach(t => { try { t.stop(); } catch (e) { /* ignore */ } });
-        }
-      } else if (plan === 'unavailable') {
-        pitchBlockedReason = 'device';
+      };
+
+      if (chimeOnEl.checked) {
+        playChime(currentLang);
+        schedule(fire, CHIME_MS);
       } else {
-        pitchBlockedReason = null;
-      }
-
-      if (epoch !== activeEpoch || mySession !== session) return;
-      beginPlainRecognition(mySession, epoch);
-    }
-
-    function beginPlainRecognition(mySession, epoch) {
-      captureMode = 'off';
-      recoverPlainRecognition = false;
-      sessionEpoch = epoch;
-      try {
-        recognition.start();
-      } catch (e) {
-        // Already started (InvalidStateError): restart cleanly.
-        try { recognition.abort(); } catch (e2) { /* ignore */ }
-        schedule(() => {
-          if (mySession !== session) return;
-          sessionEpoch = activeEpoch;
-          try { recognition.start(); } catch (e3) { updateUIState('ready'); }
-        }, 250);
+        fire();
       }
     }
 
-    // ---------- Translation ----------
     async function fetchTranslation(text, sourceLang, targetLang) {
-      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
+      const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=' +
+        sourceLang + '&tl=' + targetLang + '&dt=t&q=' + encodeURIComponent(text);
       const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
       const timer = controller ? setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS) : null;
       try {
         const res = await fetch(url, controller ? { signal: controller.signal } : undefined);
         if (!res.ok) {
           throw new Error(res.status === 429
-            ? 'Translation service is busy (too many requests). Wait a moment and try again.'
-            : `Translation service error (HTTP ${res.status}).`);
+            ? 'Translation service is busy. Wait a moment and try again.'
+            : 'Translation service error (HTTP ' + res.status + ').');
         }
         let data;
-        try { data = await res.json(); } catch (e) { throw new Error('Unexpected response from translation service.'); }
-        if (!Array.isArray(data) || !Array.isArray(data[0])) {
-          throw new Error('Unexpected response from translation service.');
-        }
-        const translated = data[0]
-          .map(segment => (Array.isArray(segment) && typeof segment[0] === 'string') ? segment[0] : '')
-          .join('')
-          .trim();
+        try { data = await res.json(); } catch (e) { throw new Error('Unexpected response from the translation service.'); }
+        if (!Array.isArray(data) || !Array.isArray(data[0])) throw new Error('Unexpected response from the translation service.');
+        const translated = data[0].map(segment => (Array.isArray(segment) && typeof segment[0] === 'string') ? segment[0] : '').join('').trim();
         if (!translated) throw new Error('No translation returned.');
         return translated;
       } catch (err) {
@@ -765,354 +911,80 @@
       }
     }
 
-    async function processTranslation(text, sourceLang, opts = {}) {
-      const fromSpeech = !!opts.fromSpeech;
-      if (!text) {
-        updateUIState('ready');
-        return;
-      }
+    async function processTranslation(text, sourceLang, opts) {
+      const fromSpeech = !!(opts && opts.fromSpeech);
+      if (!text) { updateUIState('ready'); return; }
       const mySession = session;
-      const voiceChoice = decideVoice(sourceLang, fromSpeech);
-      lastVoiceGender = voiceChoice.gender;
-      showVoiceHint(voiceChoice.hint);
-      setStatus('Translating...');
+      setStatus('Translating…');
       const targetLang = sourceLang === 'en' ? 'pl' : 'en';
-
       let translated;
       try {
         translated = await fetchTranslation(text, sourceLang, targetLang);
       } catch (err) {
         if (mySession !== session) return;
         targetTextEl.textContent = '—';
-        setStatus(err.message || 'Translation failed. Check connection.', 'error');
-        highlightTurn(mode === 'auto' && loopActive ? currentLang : null);
-        if (fromSpeech && mode === 'auto' && loopActive) {
-          // Let the same speaker try again after a short pause.
+        targetTextEl.classList.remove('placeholder');
+        setStatus(err.message || 'Translation failed. Check your connection.', 'error');
+        if (fromSpeech && loopActive) {
           schedule(() => { if (mySession === session && loopActive) startListening(); }, 2000);
         }
         return;
       }
-      if (mySession !== session) return; // stopped or superseded meanwhile
+      if (mySession !== session) return;
 
+      targetLangEl.textContent = targetLang === 'pl' ? 'Polish' : 'English';
       targetTextEl.textContent = translated;
+      targetTextEl.classList.remove('placeholder');
       lastTranslation = translated;
       lastTargetLocale = targetLang === 'pl' ? 'pl-PL' : 'en-GB';
+      lastVoiceGender = currentGender();
+      addLog(sourceLang, text, translated);
 
       speakText(translated, lastTargetLocale, () => {
         if (mySession !== session) return;
-        if (fromSpeech && mode === 'auto' && loopActive) {
+        if (fromSpeech && loopActive) {
           currentLang = currentLang === 'en' ? 'pl' : 'en';
           highlightTurn(currentLang);
           setStatus(currentLang === 'en' ? 'Next: English speaker' : 'Next: Polish speaker');
-          // Echo guard so the mic doesn't pick up our own speaker output.
           schedule(() => { if (mySession === session && loopActive) startListening(); }, ECHO_GUARD_MS);
         } else {
           updateUIState('ready');
         }
-      }, voiceChoice.gender);
+      }, lastVoiceGender);
     }
 
-    // ---------- Text-to-speech ----------
     function loadVoices() {
       if (!ttsSupported) return;
-      const v = window.speechSynthesis.getVoices();
-      if (v && v.length) voices = v;
+      const list = window.speechSynthesis.getVoices();
+      if (list && list.length) voices = list;
     }
     if (ttsSupported) {
       loadVoices();
-      if ('onvoiceschanged' in window.speechSynthesis) {
-        window.speechSynthesis.onvoiceschanged = loadVoices;
-      } else if (window.speechSynthesis.addEventListener) {
-        window.speechSynthesis.addEventListener('voiceschanged', loadVoices);
-      }
-    }
-
-    // ---------- Voice gender ----------
-    const VOICE_PREF_KEY = 'plTranslatorVoicePref';
-    const PITCH_OFF_KEY = 'plTranslatorPitchOff';
-    const MALE_BELOW_HZ = 160;
-
-    function loadVoicePrefs() {
-      const fallback = { en: 'auto', pl: 'auto' };
-      try {
-        const raw = localStorage.getItem(VOICE_PREF_KEY);
-        if (!raw) return fallback;
-        const parsed = JSON.parse(raw);
-        const ok = value => value === 'auto' || value === 'male' || value === 'female';
-        return {
-          en: parsed && ok(parsed.en) ? parsed.en : 'auto',
-          pl: parsed && ok(parsed.pl) ? parsed.pl : 'auto'
-        };
-      } catch (e) {
-        return fallback;
-      }
-    }
-
-    function setVoicePref(side, value) {
-      if ((side !== 'en' && side !== 'pl') || (value !== 'auto' && value !== 'male' && value !== 'female')) return;
-      voicePrefs[side] = value;
-      try { localStorage.setItem(VOICE_PREF_KEY, JSON.stringify(voicePrefs)); } catch (e) { /* private mode */ }
-      renderVoicePrefs();
-    }
-
-    function renderVoicePrefs() {
-      document.querySelectorAll('.voice-pref-options button').forEach(btn => {
-        const on = voicePrefs[btn.dataset.side] === btn.dataset.voice;
-        btn.classList.toggle('active', on);
-        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-      });
-    }
-
-    function showVoiceHint(text) {
-      if (voiceHint) voiceHint.textContent = text || '';
-    }
-
-    function decideVoice(sourceLang, fromSpeech) {
-      const pref = voicePrefs[sourceLang] || 'auto';
-      if (pref === 'male' || pref === 'female') {
-        return {
-          gender: pref,
-          hint: pref === 'male' ? 'Using a male voice' : 'Using a female voice'
-        };
-      }
-      if (!fromSpeech) return { gender: null, hint: '' };
-      if (detectedThisTurn && detectedThisTurn.lang === sourceLang && detectedThisTurn.gender) {
-        const gender = detectedThisTurn.gender;
-        return {
-          gender: gender,
-          hint: gender === 'male' ? 'Detected: male voice' : 'Detected: female voice'
-        };
-      }
-      if (pitchBlockedReason === 'device') {
-        return { gender: null, hint: 'Could not detect the voice on this device. Choose Male or Female.' };
-      }
-      return { gender: null, hint: 'Could not detect the voice. Choose Male or Female if it sounds wrong.' };
-    }
-
-    // Chromium 135+ can recognise speech from an existing track, so pitch
-    // measurement and recognition share one microphone open. iOS browsers
-    // cannot, and opening a second capture breaks recognition there.
-    function supportsRecognitionAudioTrack() {
-      const ua = navigator.userAgent || '';
-      if (/iPhone|iPad|iPod|CriOS|FxiOS/i.test(ua)) return false;
-      const match = ua.match(/(?:Chrome|Chromium|Edg)\/(\d+)/);
-      if (!match) return false;
-      return parseInt(match[1], 10) >= 135;
-    }
-
-    function pitchPlan() {
-      if ((voicePrefs[currentLang] || 'auto') !== 'auto') return 'manual';
-      if (sharedTrackBroken) return 'unavailable';
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return 'unavailable';
-      const AudioCtor = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtor) return 'unavailable';
-      if (!supportsRecognitionAudioTrack()) return 'unavailable';
-      return 'shared';
-    }
-
-    function acquireMicStream() {
-      return navigator.mediaDevices.getUserMedia({ audio: true });
-    }
-
-    function getAudioContext() {
-      const AudioCtor = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtor) return null;
-      if (!audioContext || audioContext.state === 'closed') audioContext = new AudioCtor();
-      return audioContext;
-    }
-
-    function unlockAudioGraph() {
-      const ctx = getAudioContext();
-      if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
-    }
-
-    function stopPitchCapture() {
-      if (pitchTimer) { clearInterval(pitchTimer); pitchTimer = null; }
-      if (pitchSourceNode) {
-        try { pitchSourceNode.disconnect(); } catch (e) { /* ignore */ }
-        pitchSourceNode = null;
-      }
-      if (pitchStream) {
-        pitchStream.getTracks().forEach(track => { try { track.stop(); } catch (e) { /* ignore */ } });
-        pitchStream = null;
-      }
-      pitchAnalyser = null;
-    }
-
-    function noteSharedTrackFailed() {
-      sharedTrackBroken = true;
-      try { sessionStorage.setItem(PITCH_OFF_KEY, '1'); } catch (e) { /* ignore */ }
-      pitchBlockedReason = 'device';
-      pitchAttempted = false;
-      pitchSamples = [];
-      detectedThisTurn = null;
-      captureMode = 'off';
-      recoverPlainRecognition = false;
-      stopPitchCapture();
-    }
-
-    function beginPitchMeter(stream) {
-      stopPitchCapture();
-      pitchStream = stream;
-      const ctx = getAudioContext();
-      if (!ctx) return;
-      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
-      try {
-        pitchSourceNode = ctx.createMediaStreamSource(stream);
-        pitchAnalyser = ctx.createAnalyser();
-        pitchAnalyser.fftSize = 2048;
-        pitchSourceNode.connect(pitchAnalyser);
-        const buf = new Float32Array(pitchAnalyser.fftSize);
-        pitchTimer = setInterval(() => {
-          if (!pitchAnalyser) return;
-          try {
-            pitchAnalyser.getFloatTimeDomainData(buf);
-            const hz = detectPitchHz(buf, ctx.sampleRate || 48000);
-            if (hz && pitchSamples.length < 400) pitchSamples.push(hz);
-          } catch (e) { /* recognition must keep working */ }
-        }, 50);
-      } catch (e) {
-        pitchAttempted = false;
-      }
-    }
-
-    function finishPitchDetection() {
-      const samples = pitchSamples.slice();
-      const attempted = pitchAttempted;
-      stopPitchCapture();
-      captureMode = 'off';
-      recoverPlainRecognition = false;
-      pitchSamples = [];
-      pitchAttempted = false;
-      const result = classifyPitchSamples(samples);
-      if (result) {
-        detectedThisTurn = { lang: currentLang, gender: result.gender };
-        pitchBlockedReason = null;
-      } else if (attempted && pitchBlockedReason !== 'device') {
-        detectedThisTurn = null;
-        pitchBlockedReason = 'failed';
-      } else {
-        detectedThisTurn = null;
-      }
-    }
-
-    // Normalised difference function. Downsamples to about 8 kHz so it stays
-    // cheap on a phone, then prefers the lowest strong period so a harmonic
-    // does not get reported instead of the speaking pitch.
-    function detectPitchHz(buf, sampleRate) {
-      const targetRate = 8000;
-      let data = buf;
-      let rate = sampleRate;
-      if (sampleRate > targetRate * 1.25 && buf && buf.length) {
-        const ratio = sampleRate / targetRate;
-        const n = Math.floor(buf.length / ratio);
-        const out = new Float32Array(n);
-        for (let i = 0; i < n; i++) {
-          const start = Math.floor(i * ratio);
-          const end = Math.min(buf.length, Math.floor((i + 1) * ratio));
-          let sum = 0;
-          for (let j = start; j < end; j++) sum += buf[j];
-          out[i] = sum / Math.max(1, end - start);
-        }
-        data = out;
-        rate = sampleRate * n / buf.length;
-      }
-      const size = data ? data.length : 0;
-      if (size < 64 || !rate) return null;
-      let rms = 0;
-      for (let i = 0; i < size; i++) rms += data[i] * data[i];
-      rms = Math.sqrt(rms / size);
-      if (rms < 0.01) return null;
-
-      const minF = 70;
-      const maxF = 400;
-      const maxPeriod = Math.min(size - 2, Math.floor(rate / minF));
-      const minPeriod = Math.max(2, Math.floor(rate / maxF));
-      if (maxPeriod <= minPeriod) return null;
-
-      const nsdf = new Float32Array(maxPeriod + 2);
-      for (let tau = minPeriod; tau <= maxPeriod; tau++) {
-        let sum = 0;
-        let norm = 0;
-        const limit = size - tau;
-        for (let i = 0; i < limit; i++) {
-          const a = data[i];
-          const b = data[i + tau];
-          sum += a * b;
-          norm += a * a + b * b;
-        }
-        nsdf[tau] = norm > 0 ? (2 * sum) / norm : 0;
-      }
-
-      let bestTau = -1;
-      let bestVal = 0;
-      for (let tau = minPeriod; tau <= maxPeriod; tau++) {
-        if (nsdf[tau] > bestVal) { bestVal = nsdf[tau]; bestTau = tau; }
-      }
-      if (bestTau < 0 || bestVal < 0.45) return null;
-
-      let chosen = bestTau;
-      for (let tau = minPeriod + 1; tau < bestTau; tau++) {
-        if (nsdf[tau] >= bestVal * 0.88 && nsdf[tau] >= nsdf[tau - 1] && nsdf[tau] >= nsdf[tau + 1]) {
-          chosen = tau;
-          break;
-        }
-      }
-      const x0 = nsdf[chosen - 1] || 0;
-      const x1 = nsdf[chosen];
-      const x2 = nsdf[chosen + 1] || 0;
-      const denom = x0 - 2 * x1 + x2;
-      const shift = denom !== 0 ? (0.5 * (x0 - x2) / denom) : 0;
-      const period = chosen + shift;
-      if (!(period > 0)) return null;
-      const freq = rate / period;
-      if (freq < minF || freq > maxF) return null;
-      return freq;
-    }
-
-    function classifyPitchSamples(samples) {
-      const valid = [];
-      const list = samples || [];
-      for (let i = 0; i < list.length; i++) {
-        const freq = list[i];
-        if (typeof freq === 'number' && freq >= 70 && freq <= 400) valid.push(freq);
-      }
-      if (valid.length < 5) return null;
-      valid.sort((a, b) => a - b);
-      const trim = valid.length >= 10 ? Math.floor(valid.length * 0.15) : 0;
-      const core = valid.slice(trim, valid.length - trim);
-      const median = core[Math.floor((core.length - 1) / 2)];
-      if (!(median > 0)) return null;
-      return { hz: median, gender: median < MALE_BELOW_HZ ? 'male' : 'female' };
+      if ('onvoiceschanged' in window.speechSynthesis) window.speechSynthesis.onvoiceschanged = loadVoices;
+      else if (window.speechSynthesis.addEventListener) window.speechSynthesis.addEventListener('voiceschanged', loadVoices);
     }
 
     function voiceHaystack(voice) {
       return ((voice && voice.name) || '') + ' ' + ((voice && voice.voiceURI) || '');
     }
-
     function hasVoiceToken(id, word) {
       return new RegExp('(^|[^a-z])' + word + '([^a-z]|$)').test(id);
     }
-
     function guessVoiceGender(voice) {
       const id = voiceHaystack(voice).toLowerCase();
       if (!id.trim()) return null;
-      // "female" contains the letters of "male", so the female test has to win.
       if (hasVoiceToken(id, 'female') || id.indexOf('#female') !== -1) return 'female';
       if (hasVoiceToken(id, 'male') || id.indexOf('#male') !== -1) return 'male';
-
       const femaleIds = ['en-gb-x-gba', 'en-gb-x-gbc', 'en-gb-x-fis', 'pl-pl-x-oda'];
       const maleIds = ['en-gb-x-rjs', 'en-gb-x-gbb', 'en-gb-x-gbd', 'pl-pl-x-bmg'];
       for (let i = 0; i < femaleIds.length; i++) if (id.indexOf(femaleIds[i]) !== -1) return 'female';
       for (let i = 0; i < maleIds.length; i++) if (id.indexOf(maleIds[i]) !== -1) return 'male';
-
       const femaleNames = ['hazel', 'kate', 'serena', 'sonia', 'libby', 'maisie', 'fiona', 'susan', 'martha', 'zosia', 'zofia', 'paulina', 'ewa', 'agnieszka', 'maja'];
       const maleNames = ['daniel', 'george', 'rishi', 'arthur', 'ryan', 'oliver', 'thomas', 'adam', 'marek', 'krzysztof', 'jakub', 'jacek'];
       for (let i = 0; i < femaleNames.length; i++) if (hasVoiceToken(id, femaleNames[i])) return 'female';
       for (let i = 0; i < maleNames.length; i++) if (hasVoiceToken(id, maleNames[i])) return 'male';
       return null;
     }
-
     function voiceScore(voice) {
       const id = voiceHaystack(voice).toLowerCase();
       let score = 0;
@@ -1121,7 +993,6 @@
       if (voice && voice.localService) score += 1;
       return score;
     }
-
     function voicesForLocale(voiceList, locale) {
       const list = voiceList || [];
       const want = (locale || '').toLowerCase();
@@ -1130,9 +1001,6 @@
       const exact = list.filter(voice => norm(voice) === want);
       return exact.length ? exact : list.filter(voice => norm(voice).split('-')[0] === prefix);
     }
-
-    // Returns the best voice for locale and gender. Pitch stays at 1 when the
-    // voice itself matches; otherwise it is lowered for male or raised for female.
     function selectVoice(voiceList, locale, gender) {
       const pool = voicesForLocale(voiceList, locale);
       if (!pool.length) return { voice: null, pitch: 1, matchedGender: false };
@@ -1140,30 +1008,30 @@
       if (gender === 'male' || gender === 'female') {
         const gendered = ranked.filter(voice => guessVoiceGender(voice) === gender);
         if (gendered.length) return { voice: gendered[0], pitch: 1, matchedGender: true };
-        return {
-          voice: ranked[0],
-          pitch: gender === 'male' ? 0.82 : 1.2,
-          matchedGender: false
-        };
+        return { voice: ranked[0], pitch: gender === 'male' ? 0.82 : 1.2, matchedGender: false };
       }
       return { voice: ranked[0], pitch: 1, matchedGender: false };
     }
 
-    function pickVoice(locale) {
-      if (!voices.length) loadVoices();
-      return selectVoice(voices, locale, null).voice;
+    function currentGender() {
+      return voiceGenderEl.value === 'female' ? 'female' : 'male';
+    }
+    function currentRate() {
+      const rate = parseFloat(voiceRateEl.value);
+      return rate > 0 ? rate : 1;
     }
 
-    function splitIntoChunks(text, maxLen = 160) {
+    function splitIntoChunks(text, maxLen) {
+      const limit = maxLen || 160;
       const sentences = text.match(/[^.!?…]+[.!?…]+["'”»)]*\s*|[^.!?…]+$/g) || [text];
       const chunks = [];
       for (let s of sentences) {
         s = s.trim();
         if (!s) continue;
-        while (s.length > maxLen) {
-          let cut = Math.max(s.lastIndexOf(', ', maxLen), s.lastIndexOf('; ', maxLen));
-          if (cut < maxLen * 0.4) cut = s.lastIndexOf(' ', maxLen);
-          if (cut <= 0) cut = maxLen;
+        while (s.length > limit) {
+          let cut = Math.max(s.lastIndexOf(', ', limit), s.lastIndexOf('; ', limit));
+          if (cut < limit * 0.4) cut = s.lastIndexOf(' ', limit);
+          if (cut <= 0) cut = limit;
           chunks.push(s.slice(0, cut + 1).trim());
           s = s.slice(cut + 1).trim();
         }
@@ -1173,13 +1041,12 @@
     }
 
     function unlockSpeech() {
-      // iOS Safari only allows speech after a user gesture: prime it on the first tap.
       if (speechUnlocked || !ttsSupported) return;
       speechUnlocked = true;
       try {
-        const u = new SpeechSynthesisUtterance(' ');
-        u.volume = 0;
-        window.speechSynthesis.speak(u);
+        const utterance = new SpeechSynthesisUtterance(' ');
+        utterance.volume = 0;
+        window.speechSynthesis.speak(utterance);
       } catch (e) { /* ignore */ }
     }
 
@@ -1190,32 +1057,27 @@
         finished = true;
         if (onComplete) onComplete();
       };
-
       if (!ttsSupported) {
-        setStatus('Text-to-speech not supported.');
+        setStatus('Text-to-speech is not available in this browser.');
         done();
         return;
       }
-
       const synth = window.speechSynthesis;
       synth.cancel();
-      const chunks = splitIntoChunks(text);
       if (!voices.length) loadVoices();
-      const chosen = selectVoice(voices, locale, gender);
-      const voice = chosen.voice;
+      const chosen = selectVoice(voices, locale, gender || currentGender());
+      const chunks = splitIntoChunks(text);
+      const rate = currentRate();
       let index = 0;
       let chunkTimer = null;
-
       const speakNext = () => {
         if (finished) return;
         if (index >= chunks.length) { done(); return; }
-        const chunk = chunks[index++];
-        const utterance = new SpeechSynthesisUtterance(chunk);
+        const utterance = new SpeechSynthesisUtterance(chunks[index++]);
         utterance.lang = locale;
-        if (voice) utterance.voice = voice;
-        utterance.rate = 1;
+        if (chosen.voice) utterance.voice = chosen.voice;
+        utterance.rate = rate;
         utterance.pitch = chosen.pitch;
-
         let advanced = false;
         const next = () => {
           if (advanced) return;
@@ -1223,107 +1085,222 @@
           if (chunkTimer) { clearTimeout(chunkTimer); chunkTimer = null; }
           speakNext();
         };
-
         utterance.onstart = () => updateUIState('speaking');
         utterance.onend = next;
         utterance.onerror = next;
-
-        // Safety net: if onend never fires (Chrome bug), move on anyway.
-        const estimateMs = 2500 + chunk.length * 110;
+        const estimateMs = 2500 + utterance.text.length * 110;
         chunkTimer = setTimeout(() => {
           if (advanced) return;
-          if (synth.speaking) {
-            // Still talking: give it a little more time once, then force it.
-            chunkTimer = setTimeout(() => { if (!advanced) { synth.cancel(); next(); } }, 4000);
-          } else {
-            next();
-          }
+          if (synth.speaking) chunkTimer = setTimeout(() => { if (!advanced) { synth.cancel(); next(); } }, 4000);
+          else next();
         }, estimateMs);
-
         synth.speak(utterance);
-        // Chrome sometimes leaves the queue paused.
         if (synth.paused) synth.resume();
       };
-
-      // Small delay after cancel() avoids Chrome dropping the next utterance.
       setTimeout(speakNext, 60);
     }
 
     function replaySpeech() {
-      if (lastTranslation) {
-        unlockSpeech();
-        speakText(lastTranslation, lastTargetLocale, () => updateUIState('ready'), lastVoiceGender);
-      }
+      if (!lastTranslation) return;
+      unlockSpeech();
+      if (loopActive) { loopActive = false; refreshLoopButton(); }
+      stopAll();
+      speakText(lastTranslation, lastTargetLocale, () => updateUIState('ready'), lastVoiceGender);
     }
 
-    // ---------- Typed fallback ----------
+    function testVoice(gender) {
+      unlockSpeech();
+      unlockAudio();
+      if (loopActive) { loopActive = false; refreshLoopButton(); }
+      stopAll();
+      const english = gender === 'male' ? 'This is the male English voice.' : 'This is the female English voice.';
+      const polish = gender === 'male' ? 'To jest męski głos po polsku.' : 'To jest żeński głos po polsku.';
+      speakText(english, 'en-GB', () => {
+        speakText(polish, 'pl-PL', () => updateUIState('ready'), gender);
+      }, gender);
+    }
+
+    function getAudioContext() {
+      const AudioCtor = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtor) return null;
+      if (!audioContext || audioContext.state === 'closed') audioContext = new AudioCtor();
+      return audioContext;
+    }
+    function unlockAudio() {
+      const ctx = getAudioContext();
+      if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+    }
+    function playTone(ctx, frequency, when) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = frequency;
+      const start = ctx.currentTime + when;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.07, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.18);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.2);
+    }
+    function playChime(lang) {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+      try { playTone(ctx, lang === 'pl' ? 528 : 660, 0); } catch (e) { /* ignore */ }
+    }
+    function testChimes() {
+      unlockAudio();
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      try {
+        playTone(ctx, 660, 0);
+        playTone(ctx, 528, 0.28);
+      } catch (e) { /* ignore */ }
+    }
+
     function setTypedLang(lang) {
       typedLang = lang;
-      document.getElementById('typeEn').classList.toggle('active', lang === 'en');
-      document.getElementById('typePl').classList.toggle('active', lang === 'pl');
-      textInput.placeholder = lang === 'en' ? 'Type English text here...' : 'Wpisz tekst po polsku...';
+      btnEnPl.classList.toggle('active', lang === 'en');
+      btnPlEn.classList.toggle('active', lang === 'pl');
       textInput.lang = lang === 'en' ? 'en-GB' : 'pl-PL';
-      textInput.focus();
     }
 
     async function translateTyped() {
       const text = textInput.value.trim();
       if (!text) return;
-
       unlockSpeech();
-      // Typing interrupts any listening/speaking and pauses the loop.
-      if (loopActive) { loopActive = false; refreshStopButton(); }
+      if (loopActive) { loopActive = false; refreshLoopButton(); }
       stopAll();
-
       const lang = typedLang;
       currentLang = lang;
-      sourceLabel.textContent = lang === 'en' ? 'Typed (English)' : 'Wpisano (Polski)';
-      targetLabel.textContent = lang === 'en' ? 'Translation (Polski)' : 'Translation (English)';
-      sourceTextEl.classList.remove('interim');
-      sourceTextEl.textContent = text;
-      targetTextEl.textContent = '...';
+      highlightTurn(lang);
+      sourceLangEl.textContent = lang === 'en' ? 'English' : 'Polish';
+      targetLangEl.textContent = lang === 'en' ? 'Polish' : 'English';
+      setSourceText(text);
+      targetTextEl.textContent = '…';
+      targetTextEl.classList.add('placeholder');
       textInput.value = '';
-
       await processTranslation(text, lang, { fromSpeech: false });
     }
 
-    textInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); translateTyped(); }
-    });
+    function usePhrase(phrase) {
+      setTypedLang(phrase.lang);
+      textInput.value = phrase.text;
+      translateTyped();
+    }
 
-    // ---------- UI state ----------
+    function setSourceText(text, opts) {
+      sourceTextEl.textContent = text;
+      const placeholder = opts && opts.placeholder;
+      const interim = opts && opts.interim;
+      sourceTextEl.classList.toggle('placeholder', !!placeholder || text === PLACEHOLDER);
+      sourceTextEl.classList.toggle('interim', !!interim);
+    }
+
+    async function copyText(text, button, label) {
+      const value = (text || '').trim();
+      if (!value || value === '…' || value === PLACEHOLDER || sourceTextEl.classList.contains('placeholder') && button.id === 'copySource') return;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(value);
+        else throw new Error('no clipboard');
+      } catch (e) {
+        const area = document.createElement('textarea');
+        area.value = value;
+        document.body.appendChild(area);
+        area.select();
+        try { document.execCommand('copy'); } catch (err) { /* ignore */ }
+        area.remove();
+      }
+      button.textContent = 'Copied';
+      setTimeout(() => { button.textContent = label; }, 1200);
+    }
+
+    function addLog(sourceLang, source, target) {
+      log.push({ sourceLang: sourceLang, source: source, target: target });
+      if (log.length > 40) log.shift();
+      renderLog();
+    }
+    function renderLog() {
+      logList.textContent = '';
+      logEmpty.hidden = log.length > 0;
+      logCount.textContent = log.length === 1 ? '1 turn' : log.length + ' turns';
+      log.forEach(entry => {
+        const item = document.createElement('li');
+        const meta = document.createElement('div');
+        meta.className = 'log-meta';
+        meta.textContent = entry.sourceLang === 'en' ? 'English → Polish' : 'Polish → English';
+        const src = document.createElement('p');
+        src.textContent = entry.source;
+        const tgt = document.createElement('p');
+        tgt.className = 'log-target';
+        tgt.textContent = entry.target;
+        item.appendChild(meta);
+        item.appendChild(src);
+        item.appendChild(tgt);
+        logList.appendChild(item);
+      });
+    }
+    function clearLog() {
+      log = [];
+      renderLog();
+    }
+
     function highlightTurn(lang) {
-      btnEn.classList.toggle('active-turn', lang === 'en');
-      btnPl.classList.toggle('active-turn', lang === 'pl');
+      currentLang = lang;
+      cardEn.classList.toggle('selected', lang === 'en');
+      cardPl.classList.toggle('selected', lang === 'pl');
+      selectedTurnEl.textContent = lang === 'en' ? 'English Speaker' : 'Polish speaker';
     }
 
     function updateUIState(state) {
       if (state === 'listening') {
         highlightTurn(currentLang);
-        setStatus(currentLang === 'en' ? 'Listening for English...' : 'Słucham po polsku...', 'listening');
+        setStatus(currentLang === 'en' ? 'Listening for English…' : 'Listening for Polish…', 'listening');
       } else if (state === 'speaking') {
-        setStatus('Speaking translation...', 'speaking');
+        setStatus('Speaking…', 'speaking');
+      } else if (loopActive) {
+        highlightTurn(currentLang);
+        setStatus('Hands-free loop running');
       } else {
-        // In a running loop keep the glow on whoever speaks next.
-        highlightTurn(mode === 'auto' && loopActive ? currentLang : null);
-        if (mode === 'auto') {
-          setStatus(loopActive ? 'Hands-Free Loop running' : 'Hands-Free Loop ready — tap a button to start');
-        } else {
-          setStatus('Ready — Click a button to speak');
-        }
+        highlightTurn(currentLang);
+        setStatus('Ready — start Hands-Free or select a speaker');
       }
     }
 
-    function setStatus(msg, className = '') {
-      statusBadge.textContent = msg;
-      statusBadge.className = 'status-badge' + (className ? ' ' + className : '');
+    function setStatus(msg, className) {
+      statusBadge.innerHTML = '<span class="dots">● ● ●</span> ' + msg;
+      statusBadge.className = 'status-pill' + (className ? ' ' + className : '');
     }
 
-    document.querySelectorAll('.voice-pref-options button').forEach(btn => {
-      btn.addEventListener('click', () => setVoicePref(btn.dataset.side, btn.dataset.voice));
+    PHRASES.forEach(phrase => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'phrase';
+      button.textContent = (phrase.lang === 'en' ? '🇬🇧 ' : '🇵🇱 ') + phrase.text;
+      button.addEventListener('click', () => usePhrase(phrase));
+      document.getElementById('phraseWrap').appendChild(button);
     });
-    voicePrefs = loadVoicePrefs();
-    renderVoicePrefs();
+
+    btnLoop.addEventListener('click', toggleLoop);
+    document.getElementById('btnSwap').addEventListener('click', swapTurn);
+    document.getElementById('btnSwapHeader').addEventListener('click', swapTurn);
+    cardEn.addEventListener('click', () => handleMicClick('en'));
+    cardPl.addEventListener('click', () => handleMicClick('pl'));
+    document.getElementById('btnTestMale').addEventListener('click', () => testVoice('male'));
+    document.getElementById('btnTestFemale').addEventListener('click', () => testVoice('female'));
+    document.getElementById('btnTestChimes').addEventListener('click', testChimes);
+    document.getElementById('btnReplay').addEventListener('click', replaySpeech);
+    document.getElementById('copySource').addEventListener('click', () => copyText(sourceTextEl.textContent, document.getElementById('copySource'), 'Copy'));
+    document.getElementById('copyTarget').addEventListener('click', () => copyText(targetTextEl.textContent, document.getElementById('copyTarget'), 'Copy'));
+    document.getElementById('btnClearLog').addEventListener('click', clearLog);
+    btnEnPl.addEventListener('click', () => { setTypedLang('en'); if (textInput.value.trim()) translateTyped(); else textInput.focus(); });
+    btnPlEn.addEventListener('click', () => { setTypedLang('pl'); if (textInput.value.trim()) translateTyped(); else textInput.focus(); });
+    textInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') { event.preventDefault(); translateTyped(); }
+    });
+
     updateUIState('ready');
   </script>
 </body>
